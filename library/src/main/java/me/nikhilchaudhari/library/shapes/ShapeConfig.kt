@@ -3,6 +3,7 @@ package me.nikhilchaudhari.library.shapes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import me.nikhilchaudhari.library.LightSource
 import me.nikhilchaudhari.library.NeuInsets
 
 
@@ -23,5 +24,6 @@ data class ShapeConfig(
     val lightShadowColor: Color,
     val darkShadowColor: Color,
     val strokeWidth: Dp,
-    var cornerType: CornerType = CornerType.Rounded()
+    var cornerType: CornerType = CornerType.Rounded(),
+    val lightSource: LightSource = LightSource.TOP_LEFT
 )

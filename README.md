@@ -1,128 +1,286 @@
-# Neumorphism UI with Jetpack Compose
-This library is an experimentation with [Neumorphism UI](https://uxdesign.cc/neumorphism-in-user-interfaces-b47cef3bf3a6) (New + Skeuomorphism) on Android with **Jetpack Compose**.  
+# Neumorphism UI Library for Android
 
-[![](https://img.shields.io/badge/mavencentral-1.0.0--alpha02-brightgreen)]() ![List of Awesome List Badge](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg) [![Awesome Kotlin Badge](https://kotlin.link/awesome-kotlin.svg)](https://github.com/KotlinBy/awesome-kotlin)
+A modern, flexible Neumorphism UI library for Android supporting both **Jetpack Compose** and traditional **XML/Java Android Views**.
 
+[![](https://img.shields.io/badge/mavencentral-2.0.0-brightgreen)]() ![List of Awesome List Badge](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg) [![Awesome Kotlin Badge](https://kotlin.link/awesome-kotlin.svg)](https://github.com/KotlinBy/awesome-kotlin)
 
 <p align="center">
 <img src="https://github.com/CuriousNikhil/neumorphic-compose/blob/main/static/complete_screen.png?raw=true" height=400>
 </p>
 
-## How to use?
+## Features ✨
 
-### 1. Add the dependency
+- 🎨 **Jetpack Compose Support** - Use the `neumorphic()` modifier with any composable
+- 📱 **XML/Java Views Support** - Traditional Android Views (NeumorphicView, NeumorphicButton, NeumorphicCardView)
+- 🌓 **Dark Theme Support** - Built-in light and dark theme color schemes
+- 🎭 **Material You Integration** - Dynamic colors on Android 12+
+- 💫 **Animation Support** - Smooth press animations
+- 🔆 **Configurable Light Source** - TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
+- 🛠 **Modern Implementation** - Migrated from deprecated RenderScript to StackBlur
 
-And your app level `build.gradle`. (Make sure you have compose dependencies as well)
+## Installation
+
+### Jetpack Compose Library
+
+Add to your app level `build.gradle`:
 
 ```kotlin
-  implementation("me.nikhilchaudhari:composeNeumorphism:1.0.0-alpha02")
+implementation("me.nikhilchaudhari:composeNeumorphism:2.0.0")
 ```
 
-### 2. Use
-
-Just add `modifier = Modifier.neumorphic()` to any of your UI element of Jetpack-Compose (just like you do for other modifiers).
-
-![image](https://user-images.githubusercontent.com/16976114/120097042-12adfe00-c14c-11eb-861c-a826108194d6.png)
-
-
-## How do I configure shape, color, etc.?
-
-### 1. Shapes  
-You've three basic **Neu** shapes available -   
-1. `Punched`,  2. `Pressed`, 3. `Pot` 
-
-These are not standard names for Neumorphism UI, I just named them based on how they look (at least to me).
-
-And you can also configure the corner families of those shapes as **`Oval`** or **`Rounded`** 
-
-![image](https://user-images.githubusercontent.com/16976114/120097777-03c94a80-c150-11eb-847b-3a9547f3a56d.png)
+### XML/Views Library
 
 ```kotlin
+implementation("me.nikhilchaudhari:neumorphismViews:2.0.0")
+```
+
+## Quick Start
+
+### Jetpack Compose
+
+```kotlin
+// Basic usage
 Card(
-  backgroundColor = Color(236, 234, 235),
-  shape = RoundedCornerShape(12.dp),
-  modifier = Modifier
-      .padding(16.dp)
-      .size(300.dp, 100.dp)
-      .neumorphic(
-        neuShape = 
-          // Punched shape
-         Punched.Rounded(radius = 8.dp) 
-         Punched.Oval()
+    modifier = Modifier
+        .padding(16.dp)
+        .size(200.dp)
+        .neumorphic()
+) {
+    // Your content
+}
 
-         // Presssed Shape
-         Pressed.Rounded(radius = 4.dp)
-         Presssed.Oval()
-
-        // Pot shape
-        Pot.Rounded(radius = 8.dp)
-        Pot.Oval()
-      )
-    ){/*card content */} 
+// With customization
+Button(
+    modifier = Modifier
+        .neumorphic(
+            neuShape = Punched.Rounded(radius = 12.dp),
+            elevation = 8.dp,
+            lightShadowColor = Color.White,
+            darkShadowColor = Color.Gray,
+            lightSource = LightSource.TOP_LEFT
+        )
+) {
+    Text("Click Me")
+}
 ```
 
-For `Rounded` corner-family, you can configure the radius of how much rounded corner you want. The default Neu shape is `Punched.Rounded(radius = 12.dp)`.  
-The `Punched` shape would work with Cards, Buttons, etc.  
-You should use `Modifier.clip()` while using `Pressed` shape, because there's known issue of shadow placeents for Pressed shape. Check the sample app for more code snippets.
+### XML Layout
 
-P.S: Even I'm yet to experiment it with all UI elements.
+```xml
+<me.nikhilchaudhari.library.views.NeumorphicButton
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Neumorphic Button"
+    app:neuShape="punched"
+    app:neuCornerRadius="12dp"
+    app:neuElevation="8dp"
+    app:neuLightShadowColor="@color/white"
+    app:neuDarkShadowColor="@color/gray"
+    app:neuLightSource="topLeft" />
 
-### 2. Shadows
-
-The idea of Neumorphism UI is simple, just create two shadows light and dark and draw those around the UI component from top-left and bottom-right corners.  
-**Just make sure you are using the same colors for your Surface and for the UI elements.**
-You can configure the shadow `insets`, `color` and `elevation`
-
-Params              | Description
-------------------- | -------------
-`lightShadowColor`  | Default value - `Color.White` - Set the light shadow color you want  
-`darkShadowColor`   | Default value - `Color.Gray` - Set the dark shadow color you want.  
-`elevation`         | Default value - `6.dp` - Set the elevation for the shadow. 
-`neuInsets`         | Default values - `NeuInsets(6.dp, 6.dp)` - Insets = Horizontal, Vertical - Placements of your shadows i.e How do you want to place your                           | shadows vertically and horizontally. 
-`strokeWidth`       | Default value -  `6.dp` - Stroke width of the internal shadows. Stroke width is for only `Pressed` and `Punched`.
-
-
- ```kotlin
-   Button(
-        onClick = { /*TODO*/ },
-        modifier = Modifier
-            .padding(12.dp)
-            .neumorphic(
-                // assing neuShape
-                //...
-                lightShadowColor = Color.White,
-                darkShadowColor = Color.Gray,
-                elevation = 4.dp,
-                strokeWidth: Dp = 6.dp,
-                neuInsets = NeuInsets(6.dp, 6.dp)
-            )
-    ) 
+<me.nikhilchaudhari.library.views.NeumorphicCardView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:neuShape="pot"
+    app:neuCornerRadius="16dp">
+    
+    <!-- Your content -->
+    
+</me.nikhilchaudhari.library.views.NeumorphicCardView>
 ```
 
-The overall configutation
-![image](https://user-images.githubusercontent.com/16976114/120100461-780aea80-c15e-11eb-9626-10b684f9c982.png)
+### Java Usage
 
+```java
+NeumorphicButton button = new NeumorphicButton(context);
+button.setNeuShapeType(NeuShapeType.PUNCHED);
+button.setNeuCornerRadius(dpToPx(12));
+button.setNeuElevation(dpToPx(8));
+button.setNeuLightSource(LightSource.TOP_LEFT);
+```
 
-## ToDos 
- - [ ] Add `LightSource` option and place the shadows accordingly (It is, by default, top-left right now)
- - [ ] Migrate from RenderScript
- - [ ] Fix clipping and shadow positioning with insets
- - [ ] Update sample app and code with Jetpack-Compose guidelines
+## Shapes
 
-## FAQs
-### What's the idea? Is there any performance overhead?
-Idea is simple - just draw the two shadows light and dark around the UI element. I'm using [RenderScript](https://developer.android.com/guide/topics/renderscript/compute) to blur two GradientDrawables. I know it's going to be deprecated in the Android 12. I'll surely update the code to migrate from RenderScript. If Renderscript throws any exception / not able to blur the drawable, I'm using [StackBlur](https://github.com/CuriousNikhil/neumorphic-compose/blob/main/library/src/main/java/me/nikhilchaudhari/library/internal/StackBlur.kt) algorithm from Mario Klingemann as a workaround.
+Three neumorphic shapes are available:
 
-### Does this library work with all the Jetpack Compose UI elements? 
-I can't surely say. I'm already experimenting drawing shadow on UIs with Jetpack Compose and improving this library. I request you to try and please help to make it work.
+| Shape | Description | Visual |
+|-------|-------------|--------|
+| `Punched` | Raised/bumped effect | `__/‾‾‾‾‾‾‾\__` |
+| `Pressed` | Depressed/sunken effect | `‾‾\________/‾‾` |
+| `Pot` | Combined raised + depressed | `_/\‾‾‾‾‾/\_` |
 
-### When can I use this?
-You can use this right now if you want to play with shiny Neumorphism UI. The library is in alpha and there are some known issues regarding shadow rendering and clipping. Please raise issue if you found any.
+Each shape supports two corner types:
+- **Rounded** - Configurable corner radius
+- **Oval** - Circular/elliptical shape
 
-## Contribution Guide
-Please contribute! I'm just getting my hands dirty with Jetpack-Compose.  
-There is heavy chance that the code may/may not be correct/holding best practices. I request you to contribute/ raise issues/ send PRs so I can learn too.
-You can use the Github **Discussion** to discuss and ask questions. Or you can reach out to me on Twitter [@CuriousNikhil](https://twitter.com/curiousnikhil). 
+```kotlin
+// Compose
+Punched.Rounded(radius = 12.dp)
+Punched.Oval()
+Pressed.Rounded(radius = 8.dp)
+Pressed.Oval()
+Pot.Rounded(radius = 16.dp)
+Pot.Oval()
+```
+
+## Configuration Options
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `neuShape` | `Punched.Rounded(12.dp)` | Shape type and corner configuration |
+| `lightShadowColor` | `Color.White` | Light shadow color |
+| `darkShadowColor` | `Color.LightGray` | Dark shadow color |
+| `elevation` | `6.dp` | Shadow depth/elevation |
+| `strokeWidth` | `6.dp` | Inner shadow stroke width |
+| `neuInsets` | `NeuInsets(6.dp, 6.dp)` | Shadow insets (horizontal, vertical) |
+| `lightSource` | `LightSource.TOP_LEFT` | Direction of light source |
+
+## Light Source
+
+Configure the direction of the light source to change shadow placement:
+
+```kotlin
+// Compose
+Modifier.neumorphic(
+    lightSource = LightSource.TOP_LEFT    // Default
+    // or
+    lightSource = LightSource.TOP_RIGHT
+    lightSource = LightSource.BOTTOM_LEFT
+    lightSource = LightSource.BOTTOM_RIGHT
+)
+```
+
+## Theme Integration
+
+### Using Theme Colors
+
+```kotlin
+@Composable
+fun ThemedCard() {
+    val colorScheme = NeuTheme.colorScheme() // Auto light/dark
+    
+    Card(
+        backgroundColor = colorScheme.backgroundColor,
+        modifier = Modifier.themedNeumorphic(colorScheme)
+    ) {
+        // Content
+    }
+}
+```
+
+### Material You Dynamic Colors (Android 12+)
+
+```kotlin
+@Composable
+fun DynamicThemedCard() {
+    val colorScheme = NeuTheme.dynamicColorScheme()
+    
+    Card(
+        backgroundColor = colorScheme.backgroundColor,
+        modifier = Modifier.themedNeumorphic(colorScheme)
+    ) {
+        // Content
+    }
+}
+```
+
+### Custom Color Scheme
+
+```kotlin
+val customScheme = NeuTheme.customColorScheme(
+    backgroundColor = Color(0xFFE0E5EC)
+)
+```
+
+## Animation
+
+### Animated Press Effect (Compose)
+
+```kotlin
+Modifier.animatedNeumorphic(
+    neuShape = Punched.Rounded(),
+    elevation = 8.dp,
+    pressed = isPressed, // from interaction state
+    animationDuration = 150
+)
+```
+
+### Clickable with Animation
+
+```kotlin
+Modifier.neumorphicClickable(
+    onClick = { /* action */ },
+    elevation = 8.dp,
+    neuShape = Punched.Rounded()
+)
+```
+
+### XML Views Animation
+
+Buttons have built-in press animations. Enable/disable with:
+
+```kotlin
+button.enablePressAnimation = true
+```
+
+## Utility Extensions
+
+```kotlin
+// Soft neumorphic (reduced elevation)
+Modifier.softNeumorphic()
+
+// Deep neumorphic (increased elevation)
+Modifier.deepNeumorphic()
+
+// Generate shadow colors from background
+val (lightShadow, darkShadow) = backgroundColor.toNeuColors()
+
+// Lighten/darken colors
+val lighter = color.lighten(0.2f)
+val darker = color.darken(0.2f)
+```
+
+## Best Practices
+
+1. **Use matching colors**: Background and shadow colors should be similar for best effect
+2. **Avoid pure white/black**: Use off-white and dark gray for realistic shadows
+3. **Consider light source**: Keep light source consistent across your UI
+4. **Use appropriate elevation**: 4-12dp works best for most cases
+5. **Clip for Pressed shape**: Use `Modifier.clip()` when using `Pressed` shape
+
+## Migration from v1.x
+
+```kotlin
+// v1.x
+Modifier.neumorphic(
+    neuShape = Punched.Rounded(),
+    elevation = 6.dp
+)
+
+// v2.0 - same API, new features
+Modifier.neumorphic(
+    neuShape = Punched.Rounded(),
+    elevation = 6.dp,
+    lightSource = LightSource.TOP_LEFT // NEW
+)
+```
+
+## Requirements
+
+- **Minimum SDK**: 21 (Android 5.0)
+- **Target SDK**: 34 (Android 14)
+- **Compose**: 1.5.4+
+- **Kotlin**: 1.9.20+
 
 ## License
+
 Licensed under Apache License, Version 2.0 [here](https://github.com/CuriousNikhil/neumorphic-compose/blob/main/LICENSE)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
+## Acknowledgments
+
+- Stack Blur Algorithm by Mario Klingemann
+- Original Neumorphism design concept from Alexander Plyuto

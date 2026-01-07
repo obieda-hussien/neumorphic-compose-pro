@@ -3,6 +3,10 @@ package me.nikhilchaudhari.library
 import android.content.Context
 import android.os.Build
 import android.util.DisplayMetrics
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.DrawModifier
@@ -22,18 +26,43 @@ import me.nikhilchaudhari.library.shapes.ShapeConfig
 import kotlin.math.min
 import kotlin.math.roundToInt
 
+/**
+ * Insets configuration for neumorphic shadows
+ */
 data class NeuInsets(
     val horizontal: Dp = 6.dp,
     val vertical: Dp = 6.dp
 )
 
+/**
+ * Light source direction for neumorphic shadows
+ */
+enum class LightSource {
+    TOP_LEFT,
+    TOP_RIGHT,
+    BOTTOM_LEFT,
+    BOTTOM_RIGHT
+}
+
+/**
+ * Apply neumorphic effect to a composable
+ *
+ * @param neuInsets Shadow insets (horizontal and vertical)
+ * @param neuShape Shape type (Punched, Pressed, Pot)
+ * @param lightShadowColor Color of the light shadow (typically white or light gray)
+ * @param darkShadowColor Color of the dark shadow (typically dark gray)
+ * @param strokeWidth Stroke width for internal shadows
+ * @param elevation Shadow elevation
+ * @param lightSource Direction of the light source for shadow placement
+ */
 fun Modifier.neumorphic(
     neuInsets: NeuInsets = NeuInsets(),
     neuShape: NeuShape = Punched.Rounded(),
     lightShadowColor: Color = Color.White,
     darkShadowColor: Color = Color.LightGray,
     strokeWidth: Dp = 6.dp,
-    elevation: Dp = 6.dp
+    elevation: Dp = 6.dp,
+    lightSource: LightSource = LightSource.TOP_LEFT
 ) = composed {
     val context = LocalContext.current
     this.then(
@@ -45,6 +74,7 @@ fun Modifier.neumorphic(
             darkShadowColor,
             strokeWidth,
             elevation,
+            lightSource,
             inspectorInfo = debugInspectorInfo {
                 name = "neumorphic"
                 properties["context"] = context
@@ -54,8 +84,50 @@ fun Modifier.neumorphic(
                 properties["strokeWidth"] = strokeWidth
                 properties["lightShadowColor"] = lightShadowColor
                 properties["darkShadowColor"] = darkShadowColor
+                properties["lightSource"] = lightSource
             }
         )
+    )
+}
+
+/**
+ * Animated neumorphic effect with smooth transitions
+ *
+ * @param neuInsets Shadow insets (horizontal and vertical)
+ * @param neuShape Shape type (Punched, Pressed, Pot)
+ * @param lightShadowColor Color of the light shadow
+ * @param darkShadowColor Color of the dark shadow
+ * @param strokeWidth Stroke width for internal shadows
+ * @param elevation Shadow elevation
+ * @param lightSource Direction of the light source
+ * @param pressed Whether the component is pressed (for animation)
+ * @param animationDuration Duration of the animation in milliseconds
+ */
+fun Modifier.animatedNeumorphic(
+    neuInsets: NeuInsets = NeuInsets(),
+    neuShape: NeuShape = Punched.Rounded(),
+    lightShadowColor: Color = Color.White,
+    darkShadowColor: Color = Color.LightGray,
+    strokeWidth: Dp = 6.dp,
+    elevation: Dp = 6.dp,
+    lightSource: LightSource = LightSource.TOP_LEFT,
+    pressed: Boolean = false,
+    animationDuration: Int = 150
+) = composed {
+    val animatedElevation by animateDpAsState(
+        targetValue = if (pressed) elevation * 0.5f else elevation,
+        animationSpec = tween(durationMillis = animationDuration),
+        label = "elevationAnimation"
+    )
+    
+    neumorphic(
+        neuInsets = neuInsets,
+        neuShape = neuShape,
+        lightShadowColor = lightShadowColor,
+        darkShadowColor = darkShadowColor,
+        strokeWidth = strokeWidth,
+        elevation = animatedElevation,
+        lightSource = lightSource
     )
 }
 
@@ -67,6 +139,7 @@ internal class NeumorphicModifier(
     private val darkShadowColor: Color,
     private val strokeWidth: Dp,
     private val elevation: Dp,
+    private val lightSource: LightSource,
     inspectorInfo: InspectorInfo.() -> Unit
 ) : DrawModifier, InspectorValueInfo(inspectorInfo) {
 
@@ -79,12 +152,12 @@ internal class NeumorphicModifier(
             elevation,
             lightShadowColor,
             darkShadowColor,
-            strokeWidth
+            strokeWidth,
+            lightSource = lightSource
         )
         neuShape.drawShadows(this, blurMaker, shapeConfig)
     }
 
-    // TODO: Try tweaking values
     private fun calculateDefaultBlurRadius(displayMetrics: DisplayMetrics): Int {
         val densityStable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             DisplayMetrics.DENSITY_DEVICE_STABLE / DisplayMetrics.DENSITY_DEFAULT.toFloat()

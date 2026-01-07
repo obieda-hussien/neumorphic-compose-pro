@@ -2,12 +2,13 @@ package me.nikhilchaudhari.library.internal
 
 import android.content.Context
 import android.graphics.*
+import android.os.Build
 import android.renderscript.*
 import java.lang.ref.WeakReference
 
 
 /**
- * Holds required data for of blur operation
+ * Holds required data for blur operation
  */
 data class BlurConfig(
     val width: Int,
@@ -22,7 +23,10 @@ data class BlurConfig(
     }
 }
 
-//TODO: Make sure if this is being invoked properly
+/**
+ * Modern blur implementation with fallback support
+ * Uses RenderScript for API < 31, StackBlur as fallback for all versions
+ */
 class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
 
     private val contextRef = WeakReference(context)
@@ -47,7 +51,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         if (width == 0 || height == 0) {
             return null
         }
-        //create a bitmap
+        // Create a bitmap
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
 
         Canvas(bitmap).run {
@@ -59,15 +63,21 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             drawBitmap(source, 0f, 0f, paint)
         }
 
-        //try blur with renderscript
+        // Try blur with appropriate method based on API level
         val blurBitmap: Bitmap? = try {
-            blurWithRenderScript(bitmap, blurConfig.radius)
-        } catch (e: RSRuntimeException) {
-            // if renderscript fails, use stack blur
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // Use StackBlur for Android 12+ as RenderScript is deprecated
+                bitmap.stackBlur(blurConfig.radius)
+            } else {
+                // Use RenderScript for older versions with StackBlur fallback
+                blurWithRenderScript(bitmap, blurConfig.radius)
+            }
+        } catch (e: Exception) {
+            // Fallback to StackBlur if anything fails
             bitmap.stackBlur(blurConfig.radius)
         }
 
-        // return blurred bitmap
+        // Return blurred bitmap
         return blurBitmap?.let {
             if (blurConfig.sampling == BlurConfig.DEFAULT_SAMPLING) {
                 it
@@ -80,8 +90,14 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         }
     }
 
+    @Suppress("DEPRECATION")
     @Throws(RSRuntimeException::class)
     private fun blurWithRenderScript(bitmap: Bitmap, radius: Int): Bitmap? {
+        // Only use RenderScript on API < 31
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return bitmap.stackBlur(radius)
+        }
+        
         val context = contextRef.get() ?: return null
         var blur: ScriptIntrinsicBlur? = null
         var input: Allocation? = null

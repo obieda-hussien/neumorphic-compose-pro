@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Neumorphic style attributes -->
+    <declare-styleable name="NeumorphicView">
+        <!-- Shape type: punched, pressed, or pot -->
+        <attr name="neuShape" format="enum">
+            <enum name="punched" value="0"/>
+            <enum name="pressed" value="1"/>
+            <enum name="pot" value="2"/>
+        </attr>
+        
+        <!-- Corner type: rounded or oval -->
+        <attr name="neuCornerType" format="enum">
+            <enum name="rounded" value="0"/>
+            <enum name="oval" value="1"/>
+        </attr>
+        
+        <!-- Corner radius for rounded corners -->
+        <attr name="neuCornerRadius" format="dimension"/>
+        
+        <!-- Light shadow color -->
+        <attr name="neuLightShadowColor" format="color"/>
+        
+        <!-- Dark shadow color -->
+        <attr name="neuDarkShadowColor" format="color"/>
+        
+        <!-- Shadow elevation -->
+        <attr name="neuElevation" format="dimension"/>
+        
+        <!-- Stroke width for inner shadows -->
+        <attr name="neuStrokeWidth" format="dimension"/>
+        
+        <!-- Horizontal shadow inset -->
+        <attr name="neuInsetHorizontal" format="dimension"/>
+        
+        <!-- Vertical shadow inset -->
+        <attr name="neuInsetVertical" format="dimension"/>
+        
+        <!-- Light source direction -->
+        <attr name="neuLightSource" format="enum">
+            <enum name="topLeft" value="0"/>
+            <enum name="topRight" value="1"/>
+            <enum name="bottomLeft" value="2"/>
+            <enum name="bottomRight" value="3"/>
+        </attr>
+        
+        <!-- Background color -->
+        <attr name="neuBackgroundColor" format="color"/>
+    </declare-styleable>
+    
+    <!-- Neumorphic Button specific attributes -->
+    <declare-styleable name="NeumorphicButton">
+        <attr name="neuShape"/>
+        <attr name="neuCornerType"/>
+        <attr name="neuCornerRadius"/>
+        <attr name="neuLightShadowColor"/>
+        <attr name="neuDarkShadowColor"/>
+        <attr name="neuElevation"/>
+        <attr name="neuStrokeWidth"/>
+        <attr name="neuInsetHorizontal"/>
+        <attr name="neuInsetVertical"/>
+        <attr name="neuLightSource"/>
+        <attr name="neuBackgroundColor"/>
+    </declare-styleable>
+    
+    <!-- Neumorphic CardView specific attributes -->
+    <declare-styleable name="NeumorphicCardView">
+        <attr name="neuShape"/>
+        <attr name="neuCornerType"/>
+        <attr name="neuCornerRadius"/>
+        <attr name="neuLightShadowColor"/>
+        <attr name="neuDarkShadowColor"/>
+        <attr name="neuElevation"/>
+        <attr name="neuStrokeWidth"/>
+        <attr name="neuInsetHorizontal"/>
+        <attr name="neuInsetVertical"/>
+        <attr name="neuLightSource"/>
+        <attr name="neuBackgroundColor"/>
+    </declare-styleable>
+    
+    <!-- Neumorphic ImageView specific attributes -->
+    <declare-styleable name="NeumorphicImageView">
+        <attr name="neuShape"/>
+        <attr name="neuCornerType"/>
+        <attr name="neuCornerRadius"/>
+        <attr name="neuLightShadowColor"/>
+        <attr name="neuDarkShadowColor"/>
+        <attr name="neuElevation"/>
+        <attr name="neuStrokeWidth"/>
+        <attr name="neuInsetHorizontal"/>
+        <attr name="neuInsetVertical"/>
+        <attr name="neuLightSource"/>
+        <attr name="neuBackgroundColor"/>
+    </declare-styleable>
+</resources>
