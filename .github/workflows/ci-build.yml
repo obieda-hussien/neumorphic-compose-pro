@@ -4,10 +4,10 @@ name: Android CI Build
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:  # Allows manual triggering
+    branches:
+      - '**'        # هذا يسمح للـ Workflow بالعمل عند أي Push على أي فرع
+  pull_request:     # هذا يسمح للـ Workflow بالعمل مع كل الـ Pull Requests لأي فرع
+  workflow_dispatch:  # يسمح بتشغيل الـ Workflow يدوياً
 
 jobs:
   build:
