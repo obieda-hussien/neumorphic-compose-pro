@@ -190,7 +190,13 @@ open class NeumorphicView @JvmOverloads constructor(
         setWillNotDraw(false)
         
         // Set layer type for proper shadow rendering
-        setLayerType(LAYER_TYPE_SOFTWARE, null)
+        // Use hardware layer on modern devices, fall back to software for complex operations
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            setLayerType(LAYER_TYPE_HARDWARE, null)
+        } else {
+            // Software layer required for blur effects on older devices
+            setLayerType(LAYER_TYPE_SOFTWARE, null)
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {

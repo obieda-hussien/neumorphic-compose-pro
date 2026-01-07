@@ -7,6 +7,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import androidx.appcompat.widget.AppCompatButton
 import me.nikhilchaudhari.library.LightSource
+import me.nikhilchaudhari.library.NeuConstants
 import me.nikhilchaudhari.library.internal.BlurMaker
 import me.nikhilchaudhari.library.internal.stackBlur
 import kotlin.math.min
@@ -197,7 +198,13 @@ class NeumorphicButton @JvmOverloads constructor(
         stateListAnimator = null
         
         // Set layer type for proper shadow rendering
-        setLayerType(LAYER_TYPE_SOFTWARE, null)
+        // Use hardware layer on modern devices, fall back to software for complex operations
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            setLayerType(LAYER_TYPE_HARDWARE, null)
+        } else {
+            // Software layer required for blur effects on older devices
+            setLayerType(LAYER_TYPE_SOFTWARE, null)
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -211,7 +218,7 @@ class NeumorphicButton @JvmOverloads constructor(
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     isPressed = true
-                    currentElevation = neuElevation * 0.5f
+                    currentElevation = neuElevation * NeuConstants.PRESSED_ELEVATION_FACTOR
                     needsRedraw = true
                     invalidate()
                 }

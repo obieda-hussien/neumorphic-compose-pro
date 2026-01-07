@@ -45,6 +45,17 @@ enum class LightSource {
 }
 
 /**
+ * Constants for neumorphic effects
+ */
+object NeuConstants {
+    /** Factor by which elevation is reduced when pressed */
+    const val PRESSED_ELEVATION_FACTOR = 0.5f
+    
+    /** Default animation duration in milliseconds */
+    const val DEFAULT_ANIMATION_DURATION_MS = 150
+}
+
+/**
  * Apply neumorphic effect to a composable
  *
  * @param neuInsets Shadow insets (horizontal and vertical)
@@ -112,10 +123,10 @@ fun Modifier.animatedNeumorphic(
     elevation: Dp = 6.dp,
     lightSource: LightSource = LightSource.TOP_LEFT,
     pressed: Boolean = false,
-    animationDuration: Int = 150
+    animationDuration: Int = NeuConstants.DEFAULT_ANIMATION_DURATION_MS
 ) = composed {
     val animatedElevation by animateDpAsState(
-        targetValue = if (pressed) elevation * 0.5f else elevation,
+        targetValue = if (pressed) elevation * NeuConstants.PRESSED_ELEVATION_FACTOR else elevation,
         animationSpec = tween(durationMillis = animationDuration),
         label = "elevationAnimation"
     )

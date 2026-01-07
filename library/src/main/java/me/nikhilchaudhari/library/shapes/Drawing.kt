@@ -99,7 +99,7 @@ private fun generateShadowBitmap(
     elevation: Float,
     blurMaker: BlurMaker,
     lightOffset: Pair<Float, Float>,
-    darkOffset: Pair<Float, Float>
+    @Suppress("UNUSED_PARAMETER") darkOffset: Pair<Float, Float>
 ) = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).blurred(blurMaker) {
     withTranslation(
         x = lightOffset.first,
@@ -107,12 +107,8 @@ private fun generateShadowBitmap(
     ) {
         lightShadowDrawable.draw(this)
     }
-    withTranslation(
-        x = darkOffset.first * 0f, // Minimal offset for inner shadow
-        y = darkOffset.second * 0f
-    ) {
-        darkShadowDrawable.draw(this)
-    }
+    // Dark shadow is drawn at origin for inner shadow effect
+    darkShadowDrawable.draw(this)
 }
 
 
