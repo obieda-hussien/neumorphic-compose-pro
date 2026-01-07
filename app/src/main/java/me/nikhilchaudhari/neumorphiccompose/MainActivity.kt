@@ -65,8 +65,13 @@ import me.nikhilchaudhari.library.NeuInsets
 import me.nikhilchaudhari.library.NeuTheme
 import me.nikhilchaudhari.library.components.NeuButton
 import me.nikhilchaudhari.library.components.NeuCard
+import me.nikhilchaudhari.library.components.NeuCheckbox
 import me.nikhilchaudhari.library.components.NeuChip
+import me.nikhilchaudhari.library.components.NeuCircularProgress
+import me.nikhilchaudhari.library.components.NeuFloatingActionButton
 import me.nikhilchaudhari.library.components.NeuIconButton
+import me.nikhilchaudhari.library.components.NeuProgressBar
+import me.nikhilchaudhari.library.components.NeuRadioButton
 import me.nikhilchaudhari.library.components.NeuSwitch
 import me.nikhilchaudhari.library.components.NeuTextField
 import me.nikhilchaudhari.library.expressiveNeumorphic
@@ -135,6 +140,11 @@ fun MainContent() {
         // Interactive Controls
         item {
             InteractiveControlsSection(colorScheme = neuColorScheme)
+        }
+        
+        // Progress & Selection Section
+        item {
+            ProgressAndSelectionSection(colorScheme = neuColorScheme)
         }
         
         // Chips Section
@@ -609,6 +619,280 @@ private fun InteractiveControlsSection(colorScheme: NeuTheme.NeuColorScheme) {
 }
 
 @Composable
+private fun ProgressAndSelectionSection(colorScheme: NeuTheme.NeuColorScheme) {
+    var progressValue by remember { mutableFloatStateOf(0.65f) }
+    var selectedRadio by remember { mutableIntStateOf(0) }
+    var checkbox1 by remember { mutableStateOf(true) }
+    var checkbox2 by remember { mutableStateOf(false) }
+    var checkbox3 by remember { mutableStateOf(true) }
+    
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = "Progress & Selection",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = colorScheme.onBackgroundColor
+        )
+        
+        NeuCard(
+            colorScheme = colorScheme,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+                modifier = Modifier.padding(8.dp)
+            ) {
+                // Progress Bars Section
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Progress Bars",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.onBackgroundColor
+                    )
+                    
+                    // Linear Progress
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Download Progress",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colorScheme.onBackgroundColor.copy(alpha = 0.7f)
+                            )
+                            Text(
+                                text = "${(progressValue * 100).toInt()}%",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colorScheme.accentColor
+                            )
+                        }
+                        NeuProgressBar(
+                            progress = progressValue,
+                            colorScheme = colorScheme,
+                            trackHeight = 12.dp
+                        )
+                    }
+                    
+                    // Circular Progress
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            NeuCircularProgress(
+                                progress = progressValue,
+                                colorScheme = colorScheme,
+                                size = 64.dp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Storage",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onBackgroundColor.copy(alpha = 0.6f)
+                            )
+                        }
+                        
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            NeuCircularProgress(
+                                progress = 0.35f,
+                                colorScheme = colorScheme,
+                                size = 64.dp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Memory",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onBackgroundColor.copy(alpha = 0.6f)
+                            )
+                        }
+                        
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            NeuCircularProgress(
+                                progress = 0.82f,
+                                colorScheme = colorScheme,
+                                size = 64.dp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Battery",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onBackgroundColor.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                    
+                    // Progress control buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        NeuButton(
+                            onClick = { progressValue = (progressValue - 0.15f).coerceIn(0f, 1f) },
+                            colorScheme = colorScheme,
+                            elevation = 6.dp,
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text("-15%")
+                        }
+                        NeuButton(
+                            onClick = { progressValue = (progressValue + 0.15f).coerceIn(0f, 1f) },
+                            colorScheme = colorScheme,
+                            elevation = 6.dp,
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text("+15%")
+                        }
+                    }
+                }
+                
+                // Radio Buttons Section
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Radio Buttons",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.onBackgroundColor
+                    )
+                    
+                    val options = listOf("Option 1", "Option 2", "Option 3")
+                    options.forEachIndexed { index, option ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            NeuRadioButton(
+                                selected = selectedRadio == index,
+                                onClick = { selectedRadio = index },
+                                colorScheme = colorScheme
+                            )
+                            Text(
+                                text = option,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colorScheme.onBackgroundColor
+                            )
+                        }
+                    }
+                }
+                
+                // Checkboxes Section
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Checkboxes",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.onBackgroundColor
+                    )
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        NeuCheckbox(
+                            checked = checkbox1,
+                            onCheckedChange = { checkbox1 = it },
+                            colorScheme = colorScheme
+                        )
+                        Text(
+                            text = "Enable notifications",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onBackgroundColor
+                        )
+                    }
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        NeuCheckbox(
+                            checked = checkbox2,
+                            onCheckedChange = { checkbox2 = it },
+                            colorScheme = colorScheme
+                        )
+                        Text(
+                            text = "Dark mode",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onBackgroundColor
+                        )
+                    }
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        NeuCheckbox(
+                            checked = checkbox3,
+                            onCheckedChange = { checkbox3 = it },
+                            colorScheme = colorScheme
+                        )
+                        Text(
+                            text = "Auto-sync",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onBackgroundColor
+                        )
+                    }
+                }
+                
+                // FAB Preview
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Floating Action Button",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.onBackgroundColor
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        NeuFloatingActionButton(
+                            onClick = { },
+                            colorScheme = colorScheme,
+                            size = 48.dp
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        
+                        NeuFloatingActionButton(
+                            onClick = { },
+                            colorScheme = colorScheme,
+                            size = 56.dp
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Favorite",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        
+                        NeuFloatingActionButton(
+                            onClick = { },
+                            colorScheme = colorScheme,
+                            size = 64.dp
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ChipsSection(colorScheme: NeuTheme.NeuColorScheme) {
     var selectedChip by remember { mutableIntStateOf(0) }
     val chips = listOf("All", "Design", "Code", "Music", "Art", "Photo")
@@ -665,73 +949,38 @@ private fun BottomNavigationSection(colorScheme: NeuTheme.NeuColorScheme) {
             color = colorScheme.onBackgroundColor
         )
         
+        // Clean navigation bar container
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(28.dp))
                 .neumorphic(
-                    neuShape = Punched.Rounded(24.dp),
+                    neuShape = Punched.Rounded(28.dp),
                     lightShadowColor = colorScheme.lightShadowColor,
                     darkShadowColor = colorScheme.darkShadowColor,
-                    elevation = 10.dp
+                    elevation = 8.dp
                 )
-                .background(colorScheme.backgroundColor, RoundedCornerShape(24.dp))
-                .padding(8.dp)
+                .background(colorScheme.backgroundColor, RoundedCornerShape(28.dp))
+                .padding(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 navItems.forEachIndexed { index, (icon, label) ->
                     val isSelected = selectedNav == index
-                    val scale by animateFloatAsState(
-                        targetValue = if (isSelected) 1.1f else 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        ),
-                        label = "navScale"
-                    )
                     
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .scale(scale)
-                            .clip(RoundedCornerShape(16.dp))
-                            .then(
-                                if (isSelected) {
-                                    Modifier.neumorphic(
-                                        neuShape = Pressed.Rounded(16.dp),
-                                        lightShadowColor = colorScheme.lightShadowColor,
-                                        darkShadowColor = colorScheme.darkShadowColor,
-                                        strokeWidth = 4.dp
-                                    )
-                                } else {
-                                    Modifier.softNeumorphic(
-                                        neuShape = Punched.Rounded(16.dp),
-                                        lightShadowColor = colorScheme.lightShadowColor,
-                                        darkShadowColor = colorScheme.darkShadowColor
-                                    )
-                                }
-                            )
-                            .background(
-                                if (isSelected) colorScheme.accentColor.copy(alpha = 0.15f)
-                                else colorScheme.backgroundColor,
-                                RoundedCornerShape(16.dp)
-                            )
-                            .expressiveNeumorphicClickable(
-                                onClick = { selectedNav = index },
-                                colorScheme = colorScheme,
-                                elevation = 0.dp
-                            ),
-                        contentAlignment = Alignment.Center
+                    NeuIconButton(
+                        onClick = { selectedNav = index },
+                        colorScheme = colorScheme,
+                        size = 48.dp
                     ) {
                         Icon(
                             imageVector = icon,
                             contentDescription = label,
-                            tint = if (isSelected) colorScheme.accentColor else colorScheme.onBackgroundColor.copy(alpha = 0.6f),
-                            modifier = Modifier.size(24.dp)
+                            tint = if (isSelected) colorScheme.accentColor else colorScheme.onBackgroundColor.copy(alpha = 0.5f),
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
