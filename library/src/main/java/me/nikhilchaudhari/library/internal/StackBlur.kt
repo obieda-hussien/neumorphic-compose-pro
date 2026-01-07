@@ -39,7 +39,8 @@ fun Bitmap.stackBlur(radius: Int): Bitmap? {
     if (radius < 1) {
         return null
     }
-    val bitmap = this.copy(this.config, true)
+    val bitmapConfig = this.config ?: Bitmap.Config.ARGB_8888
+    val bitmap = this.copy(bitmapConfig, true)
     val w = bitmap.width
     val h = bitmap.height
     val pix = IntArray(w * h)

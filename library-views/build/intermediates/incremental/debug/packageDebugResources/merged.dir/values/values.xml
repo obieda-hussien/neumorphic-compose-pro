@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="NeumorphicButton">
+        <attr name="neuShape"/>
+        <attr name="neuCornerType"/>
+        <attr name="neuCornerRadius"/>
+        <attr name="neuLightShadowColor"/>
+        <attr name="neuDarkShadowColor"/>
+        <attr name="neuElevation"/>
+        <attr name="neuStrokeWidth"/>
+        <attr name="neuInsetHorizontal"/>
+        <attr name="neuInsetVertical"/>
+        <attr name="neuLightSource"/>
+        <attr name="neuBackgroundColor"/>
+    </declare-styleable>
+    <declare-styleable name="NeumorphicCardView">
+        <attr name="neuShape"/>
+        <attr name="neuCornerType"/>
+        <attr name="neuCornerRadius"/>
+        <attr name="neuLightShadowColor"/>
+        <attr name="neuDarkShadowColor"/>
+        <attr name="neuElevation"/>
+        <attr name="neuStrokeWidth"/>
+        <attr name="neuInsetHorizontal"/>
+        <attr name="neuInsetVertical"/>
+        <attr name="neuLightSource"/>
+        <attr name="neuBackgroundColor"/>
+    </declare-styleable>
+    <declare-styleable name="NeumorphicImageView">
+        <attr name="neuShape"/>
+        <attr name="neuCornerType"/>
+        <attr name="neuCornerRadius"/>
+        <attr name="neuLightShadowColor"/>
+        <attr name="neuDarkShadowColor"/>
+        <attr name="neuElevation"/>
+        <attr name="neuStrokeWidth"/>
+        <attr name="neuInsetHorizontal"/>
+        <attr name="neuInsetVertical"/>
+        <attr name="neuLightSource"/>
+        <attr name="neuBackgroundColor"/>
+    </declare-styleable>
+    <declare-styleable name="NeumorphicView">
+        
+        <attr format="enum" name="neuShape">
+            <enum name="punched" value="0"/>
+            <enum name="pressed" value="1"/>
+            <enum name="pot" value="2"/>
+        </attr>
+        
+        
+        <attr format="enum" name="neuCornerType">
+            <enum name="rounded" value="0"/>
+            <enum name="oval" value="1"/>
+        </attr>
+        
+        
+        <attr format="dimension" name="neuCornerRadius"/>
+        
+        
+        <attr format="color" name="neuLightShadowColor"/>
+        
+        
+        <attr format="color" name="neuDarkShadowColor"/>
+        
+        
+        <attr format="dimension" name="neuElevation"/>
+        
+        
+        <attr format="dimension" name="neuStrokeWidth"/>
+        
+        
+        <attr format="dimension" name="neuInsetHorizontal"/>
+        
+        
+        <attr format="dimension" name="neuInsetVertical"/>
+        
+        
+        <attr format="enum" name="neuLightSource">
+            <enum name="topLeft" value="0"/>
+            <enum name="topRight" value="1"/>
+            <enum name="bottomLeft" value="2"/>
+            <enum name="bottomRight" value="3"/>
+        </attr>
+        
+        
+        <attr format="color" name="neuBackgroundColor"/>
+    </declare-styleable>
+</resources>

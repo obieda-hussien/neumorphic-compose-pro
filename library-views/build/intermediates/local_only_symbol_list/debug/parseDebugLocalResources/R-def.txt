@@ -1,0 +1,26 @@
+R_DEF: Internal format may change without notice
+local
+attr? neuBackgroundColor
+attr? neuCornerRadius
+attr? neuCornerType
+attr? neuDarkShadowColor
+attr? neuElevation
+attr? neuInsetHorizontal
+attr? neuInsetVertical
+attr? neuLightShadowColor
+attr? neuLightSource
+attr? neuShape
+attr? neuStrokeWidth
+id bottomLeft
+id bottomRight
+id oval
+id pot
+id pressed
+id punched
+id rounded
+id topLeft
+id topRight
+styleable NeumorphicButton neuShape neuCornerType neuCornerRadius neuLightShadowColor neuDarkShadowColor neuElevation neuStrokeWidth neuInsetHorizontal neuInsetVertical neuLightSource neuBackgroundColor
+styleable NeumorphicCardView neuShape neuCornerType neuCornerRadius neuLightShadowColor neuDarkShadowColor neuElevation neuStrokeWidth neuInsetHorizontal neuInsetVertical neuLightSource neuBackgroundColor
+styleable NeumorphicImageView neuShape neuCornerType neuCornerRadius neuLightShadowColor neuDarkShadowColor neuElevation neuStrokeWidth neuInsetHorizontal neuInsetVertical neuLightSource neuBackgroundColor
+styleable NeumorphicView neuShape neuCornerType neuCornerRadius neuLightShadowColor neuDarkShadowColor neuElevation neuStrokeWidth neuInsetHorizontal neuInsetVertical neuLightSource neuBackgroundColor
