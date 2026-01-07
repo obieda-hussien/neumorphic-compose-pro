@@ -14,6 +14,7 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -453,12 +454,15 @@ fun NeuSlider(
             .fillMaxWidth()
             .padding(vertical = 8.dp)
     ) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(thumbSize + 8.dp),
             contentAlignment = Alignment.CenterStart
         ) {
+            val availableWidth = maxWidth - thumbSize
+            val thumbOffset = availableWidth * value.coerceIn(0f, 1f)
+            
             // Track background
             Box(
                 modifier = Modifier
@@ -487,7 +491,7 @@ fun NeuSlider(
             // Thumb
             Box(
                 modifier = Modifier
-                    .padding(start = ((value.coerceIn(0f, 1f)) * 200).dp) // This is simplified, should use layout measurement
+                    .padding(start = thumbOffset)
                     .size(animatedThumbSize)
                     .clip(CircleShape)
                     .neumorphic(

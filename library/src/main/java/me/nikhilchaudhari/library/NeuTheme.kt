@@ -239,13 +239,14 @@ fun Color.toNeuColorScheme(): NeuTheme.NeuColorScheme {
 
 /**
  * Adjust color saturation
+ * Uses grayscale value (calculated via luminance formula) as the neutral point
  */
 fun Color.adjustSaturation(factor: Float): Color {
-    val luminance = 0.299f * red + 0.587f * green + 0.114f * blue
+    val grayscaleValue = 0.299f * red + 0.587f * green + 0.114f * blue
     return Color(
-        red = (luminance + (red - luminance) * factor).coerceIn(0f, 1f),
-        green = (luminance + (green - luminance) * factor).coerceIn(0f, 1f),
-        blue = (luminance + (blue - luminance) * factor).coerceIn(0f, 1f),
+        red = (grayscaleValue + (red - grayscaleValue) * factor).coerceIn(0f, 1f),
+        green = (grayscaleValue + (green - grayscaleValue) * factor).coerceIn(0f, 1f),
+        blue = (grayscaleValue + (blue - grayscaleValue) * factor).coerceIn(0f, 1f),
         alpha = alpha
     )
 }
