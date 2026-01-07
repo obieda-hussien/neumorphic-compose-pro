@@ -10,12 +10,34 @@ import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withTranslation
+import me.nikhilchaudhari.library.LightSource
 import me.nikhilchaudhari.library.internal.BlurMaker
 import kotlin.math.roundToInt
 
 
-// TODO: Try tweaking canvas values
-/*pressed shape - draw after the content */
+/**
+ * Calculate shadow offsets based on light source direction
+ */
+internal fun getLightShadowOffset(lightSource: LightSource, elevation: Float): Pair<Float, Float> {
+    return when (lightSource) {
+        LightSource.TOP_LEFT -> Pair(-elevation, -elevation)
+        LightSource.TOP_RIGHT -> Pair(elevation, -elevation)
+        LightSource.BOTTOM_LEFT -> Pair(-elevation, elevation)
+        LightSource.BOTTOM_RIGHT -> Pair(elevation, elevation)
+    }
+}
+
+internal fun getDarkShadowOffset(lightSource: LightSource, elevation: Float): Pair<Float, Float> {
+    return when (lightSource) {
+        LightSource.TOP_LEFT -> Pair(elevation, elevation)
+        LightSource.TOP_RIGHT -> Pair(-elevation, elevation)
+        LightSource.BOTTOM_LEFT -> Pair(elevation, -elevation)
+        LightSource.BOTTOM_RIGHT -> Pair(-elevation, -elevation)
+    }
+}
+
+
+/* pressed shape - draw after the content */
 internal fun ContentDrawScope.drawOnForeground(
     shapeConfig: ShapeConfig,
     blurMaker: BlurMaker
@@ -40,7 +62,7 @@ internal fun ContentDrawScope.drawOnForeground(
         setStroke(strokeWidth, shapeConfig.lightShadowColor.toArgb())
         setBounds(0, 0, width, height)
         setColor(Color.Transparent.toArgb())
-        setNeuShape(cornerType, ShadowForm.LightShadow, radius)
+        setNeuShape(cornerType, ShadowForm.LightShadow, radius, shapeConfig.lightSource)
     }
 
     darkShadowDrawable.apply {
@@ -48,9 +70,11 @@ internal fun ContentDrawScope.drawOnForeground(
         setStroke(strokeWidth, shapeConfig.darkShadowColor.toArgb())
         setColor(Color.Transparent.toArgb())
         setBounds(0, 0, width, height)
-        setNeuShape(cornerType, ShadowForm.DarkShadow, radius)
+        setNeuShape(cornerType, ShadowForm.DarkShadow, radius, shapeConfig.lightSource)
     }
 
+    val lightOffset = getLightShadowOffset(shapeConfig.lightSource, elevation)
+    val darkOffset = getDarkShadowOffset(shapeConfig.lightSource, elevation)
 
     generateShadowBitmap(
         size.width.toInt(),
@@ -58,7 +82,9 @@ internal fun ContentDrawScope.drawOnForeground(
         lightShadowDrawable,
         darkShadowDrawable,
         elevation,
-        blurMaker
+        blurMaker,
+        lightOffset,
+        darkOffset
     )?.asImageBitmap()?.let {
         drawScope.drawImage(it)
     }
@@ -71,20 +97,18 @@ private fun generateShadowBitmap(
     lightShadowDrawable: GradientDrawable,
     darkShadowDrawable: GradientDrawable,
     elevation: Float,
-    blurMaker: BlurMaker
+    blurMaker: BlurMaker,
+    lightOffset: Pair<Float, Float>,
+    @Suppress("UNUSED_PARAMETER") darkOffset: Pair<Float, Float>
 ) = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).blurred(blurMaker) {
     withTranslation(
-        x = -elevation,
-        y = -elevation
+        x = lightOffset.first,
+        y = lightOffset.second
     ) {
         lightShadowDrawable.draw(this)
     }
-    withTranslation(
-//        x = elevation,
-//        y = elevation
-    ) {
-        darkShadowDrawable.draw(this)
-    }
+    // Dark shadow is drawn at origin for inner shadow effect
+    darkShadowDrawable.draw(this)
 }
 
 
@@ -112,14 +136,14 @@ internal fun ContentDrawScope.drawOnBackground(
         setColor(shapeConfig.lightShadowColor.toArgb())
         setSize(width, height)
         setBounds(0, 0, width, height)
-        setNeuShape(cornerType, ShadowForm.Default, radius)
+        setNeuShape(cornerType, ShadowForm.Default, radius, shapeConfig.lightSource)
     }
 
     darkShadowDrawable.apply {
         setColor(shapeConfig.darkShadowColor.toArgb())
         setSize(width, height)
         setBounds(0, 0, width, height)
-        setNeuShape(cornerType, ShadowForm.Default, radius)
+        setNeuShape(cornerType, ShadowForm.Default, radius, shapeConfig.lightSource)
     }
 
     val lightShadowBitmap =
@@ -131,20 +155,29 @@ internal fun ContentDrawScope.drawOnBackground(
             .toBlurredBitmap(width, height, elevation, blurMaker)
             ?.asImageBitmap()
 
+    // Calculate insets based on light source
+    val (lightHInset, lightVInset) = when (shapeConfig.lightSource) {
+        LightSource.TOP_LEFT -> Pair(-(horizontalInset + elevation), -(verticalInset + elevation))
+        LightSource.TOP_RIGHT -> Pair(horizontalInset - elevation, -(verticalInset + elevation))
+        LightSource.BOTTOM_LEFT -> Pair(-(horizontalInset + elevation), verticalInset - elevation)
+        LightSource.BOTTOM_RIGHT -> Pair(horizontalInset - elevation, verticalInset - elevation)
+    }
+    
+    val (darkHInset, darkVInset) = when (shapeConfig.lightSource) {
+        LightSource.TOP_LEFT -> Pair(horizontalInset - elevation, verticalInset - elevation)
+        LightSource.TOP_RIGHT -> Pair(-(horizontalInset + elevation), verticalInset - elevation)
+        LightSource.BOTTOM_LEFT -> Pair(horizontalInset - elevation, -(verticalInset + elevation))
+        LightSource.BOTTOM_RIGHT -> Pair(-(horizontalInset + elevation), -(verticalInset + elevation))
+    }
+
     lightShadowBitmap?.let { bitmap ->
-        drawScope.inset(
-            -(horizontalInset + elevation),
-            -(verticalInset + elevation)
-        ) {
+        drawScope.inset(lightHInset, lightVInset) {
             drawImage(bitmap)
         }
     }
 
     darkShadowBitmap?.let { bitmap ->
-        drawScope.inset(
-            horizontalInset - elevation,
-            verticalInset - elevation
-        ) {
+        drawScope.inset(darkHInset, darkVInset) {
             drawImage(bitmap)
         }
     }
@@ -190,7 +223,8 @@ internal sealed class ShadowForm {
 private fun GradientDrawable.setNeuShape(
     cornerType: CornerType,
     shadowForm: ShadowForm,
-    radius: Float
+    radius: Float,
+    lightSource: LightSource = LightSource.TOP_LEFT
 ) {
     when (cornerType) {
         is CornerType.Oval -> {
@@ -203,33 +237,40 @@ private fun GradientDrawable.setNeuShape(
                     cornerRadius = radius
                 }
                 is ShadowForm.LightShadow -> {
-                    cornerRadii =
-                        floatArrayOf(
-                            0f,
-                            0f,
-                            radius,
-                            radius,
-                            radius,
-                            radius,
-                            radius,
-                            radius
+                    // Adjust corner radii based on light source
+                    cornerRadii = when (lightSource) {
+                        LightSource.TOP_LEFT -> floatArrayOf(
+                            0f, 0f, radius, radius, radius, radius, radius, radius
                         )
+                        LightSource.TOP_RIGHT -> floatArrayOf(
+                            radius, radius, 0f, 0f, radius, radius, radius, radius
+                        )
+                        LightSource.BOTTOM_LEFT -> floatArrayOf(
+                            radius, radius, radius, radius, 0f, 0f, radius, radius
+                        )
+                        LightSource.BOTTOM_RIGHT -> floatArrayOf(
+                            radius, radius, radius, radius, radius, radius, 0f, 0f
+                        )
+                    }
                 }
                 is ShadowForm.DarkShadow -> {
-                    cornerRadii =
-                        floatArrayOf(
-                            radius,
-                            radius,
-                            radius,
-                            radius,
-                            0f,
-                            0f,
-                            radius,
-                            radius
+                    // Adjust corner radii based on light source (opposite of light)
+                    cornerRadii = when (lightSource) {
+                        LightSource.TOP_LEFT -> floatArrayOf(
+                            radius, radius, radius, radius, 0f, 0f, radius, radius
                         )
+                        LightSource.TOP_RIGHT -> floatArrayOf(
+                            radius, radius, radius, radius, radius, radius, 0f, 0f
+                        )
+                        LightSource.BOTTOM_LEFT -> floatArrayOf(
+                            0f, 0f, radius, radius, radius, radius, radius, radius
+                        )
+                        LightSource.BOTTOM_RIGHT -> floatArrayOf(
+                            radius, radius, 0f, 0f, radius, radius, radius, radius
+                        )
+                    }
                 }
             }
         }
     }
 }
-
