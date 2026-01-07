@@ -5,9 +5,11 @@ name: Android CI Build
 on:
   push:
     branches:
-      - '**'        # هذا يسمح للـ Workflow بالعمل عند أي Push على أي فرع
-  pull_request:     # هذا يسمح للـ Workflow بالعمل مع كل الـ Pull Requests لأي فرع
-  workflow_dispatch:  # يسمح بتشغيل الـ Workflow يدوياً
+      - '**'        # يعمل عند أي Push على أي فرع في الـ Fork
+  pull_request:
+    branches:
+      - '**'        # يعمل عند فتح PR لأي فرع داخل الـ Fork
+  workflow_dispatch:  # يسمح بتشغيل الـ Workflow يدوياً من واجهة GitHub
 
 jobs:
   build:
@@ -29,7 +31,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: Validate Gradle wrapper
-      uses: gradle/wrapper-validation-action@v2
+      uses: gradle/wrapper-validation-action@v3 # تحديث للإصدار الأحدث
 
     - name: Build with Gradle
       run: ./gradlew build --no-daemon
@@ -82,8 +84,7 @@ jobs:
       with:
         name: test-results
         path: |
-          app/build/reports/tests/
-          library/build/reports/tests/
+          **/build/reports/tests/
         retention-days: 14
 
   lint:
@@ -113,6 +114,5 @@ jobs:
       with:
         name: lint-results
         path: |
-          app/build/reports/lint-results*.html
-          library/build/reports/lint-results*.html
+          **/build/reports/lint-results*.html
         retention-days: 14
