@@ -905,6 +905,12 @@ fun NeuRadioButton(
         ),
         label = "radioInnerSize"
     )
+    
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) accentColor else colorScheme.darkShadowColor,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "radioBorder"
+    )
 
     Box(
         modifier = modifier
@@ -919,6 +925,11 @@ fun NeuRadioButton(
                 strokeWidth = 2.dp
             )
             .background(colorScheme.backgroundColor, CircleShape)
+            .border(
+                width = 2.dp,
+                color = borderColor,
+                shape = CircleShape
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -1075,6 +1086,7 @@ fun NeuFloatingActionButton(
         label = "fabElevation"
     )
 
+    // Outer container with neumorphic shadow
     Box(
         modifier = modifier
             .size(size)
@@ -1086,17 +1098,31 @@ fun NeuFloatingActionButton(
                 darkShadowColor = colorScheme.darkShadowColor,
                 elevation = elevation
             )
-            .background(accentColor, CircleShape)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                role = Role.Button,
-                onClick = onClick
-            ),
+            .background(colorScheme.backgroundColor, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        CompositionLocalProvider(LocalContentColor provides Color.White) {
-            content()
+        // Inner colored circle with subtle border
+        Box(
+            modifier = Modifier
+                .size(size - 8.dp)
+                .clip(CircleShape)
+                .background(accentColor, CircleShape)
+                .border(
+                    width = 2.dp,
+                    color = Color.White.copy(alpha = 0.2f),
+                    shape = CircleShape
+                )
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = onClick
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            CompositionLocalProvider(LocalContentColor provides Color.White) {
+                content()
+            }
         }
     }
 }
@@ -1126,6 +1152,7 @@ fun NeuSeekBar(
 ) {
     var isDragging by remember { mutableFloatStateOf(0f) }
     val density = LocalDensity.current
+    val thumbSizePx = with(density) { thumbSize.toPx() }
     
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
@@ -1147,9 +1174,10 @@ fun NeuSeekBar(
                 if (!enabled) return@pointerInput
                 
                 detectTapGestures { offset ->
-                    val trackWidth = size.width - with(density) { thumbSize.toPx() }
-                    val newValue = ((offset.x - with(density) { thumbSize.toPx() / 2 }) / trackWidth).coerceIn(0f, 1f)
-                    onValueChange(newValue)
+                    val availableWidth = size.width.toFloat() - thumbSizePx
+                    val tapX = (offset.x - thumbSizePx / 2).coerceIn(0f, availableWidth)
+                    val newValue = if (availableWidth > 0) tapX / availableWidth else 0f
+                    onValueChange(newValue.coerceIn(0f, 1f))
                 }
             }
             .pointerInput(enabled) {
@@ -1161,16 +1189,17 @@ fun NeuSeekBar(
                     onDragCancel = { isDragging = 0f },
                     onDrag = { change, _ ->
                         change.consume()
-                        val trackWidth = size.width - with(density) { thumbSize.toPx() }
-                        val newValue = ((change.position.x - with(density) { thumbSize.toPx() / 2 }) / trackWidth).coerceIn(0f, 1f)
-                        onValueChange(newValue)
+                        val availableWidth = size.width.toFloat() - thumbSizePx
+                        val dragX = (change.position.x - thumbSizePx / 2).coerceIn(0f, availableWidth)
+                        val newValue = if (availableWidth > 0) dragX / availableWidth else 0f
+                        onValueChange(newValue.coerceIn(0f, 1f))
                     }
                 )
             },
         contentAlignment = Alignment.CenterStart
     ) {
-        val trackWidth = maxWidth - thumbSize
-        val thumbOffsetX = with(density) { (trackWidth * value.coerceIn(0f, 1f)).toPx() }
+        val trackWidthDp = maxWidth - thumbSize
+        val thumbOffsetX = with(density) { (trackWidthDp * value.coerceIn(0f, 1f)).toPx() }
         
         // Track background
         Box(
@@ -1193,7 +1222,7 @@ fun NeuSeekBar(
         Box(
             modifier = Modifier
                 .padding(start = thumbSize / 2)
-                .width(trackWidth * value.coerceIn(0f, 1f))
+                .width(trackWidthDp * value.coerceIn(0f, 1f))
                 .height(trackHeight)
                 .clip(RoundedCornerShape(trackHeight / 2))
                 .background(accentColor.copy(alpha = 0.7f), RoundedCornerShape(trackHeight / 2))
