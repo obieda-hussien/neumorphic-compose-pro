@@ -72,6 +72,7 @@ import me.nikhilchaudhari.library.components.NeuFloatingActionButton
 import me.nikhilchaudhari.library.components.NeuIconButton
 import me.nikhilchaudhari.library.components.NeuProgressBar
 import me.nikhilchaudhari.library.components.NeuRadioButton
+import me.nikhilchaudhari.library.components.NeuSeekBar
 import me.nikhilchaudhari.library.components.NeuSwitch
 import me.nikhilchaudhari.library.components.NeuTextField
 import me.nikhilchaudhari.library.expressiveNeumorphic
@@ -746,6 +747,21 @@ private fun ProgressAndSelectionSection(colorScheme: NeuTheme.NeuColorScheme) {
                             Text("+15%")
                         }
                     }
+                    
+                    // Draggable SeekBar
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Draggable SeekBar",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = colorScheme.onBackgroundColor
+                        )
+                        NeuSeekBar(
+                            value = progressValue,
+                            onValueChange = { progressValue = it },
+                            colorScheme = colorScheme
+                        )
+                    }
                 }
                 
                 // Radio Buttons Section
@@ -974,12 +990,12 @@ private fun BottomNavigationSection(colorScheme: NeuTheme.NeuColorScheme) {
                     NeuIconButton(
                         onClick = { selectedNav = index },
                         colorScheme = colorScheme,
-                        size = 48.dp
+                        size = 48.dp,
+                        selected = isSelected
                     ) {
                         Icon(
                             imageVector = icon,
                             contentDescription = label,
-                            tint = if (isSelected) colorScheme.accentColor else colorScheme.onBackgroundColor.copy(alpha = 0.5f),
                             modifier = Modifier.size(22.dp)
                         )
                     }
