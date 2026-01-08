@@ -1,18 +1,19 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.0.21'
 }
 
 android {
     namespace 'me.nikhilchaudhari.neumorphiccompose'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "me.nikhilchaudhari.neumorphiccompose"
-        minSdk 21
-        targetSdk 34
-        versionCode 2
-        versionName "2.0"
+        minSdk 24
+        targetSdk 35
+        versionCode 3
+        versionName "3.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -36,27 +37,58 @@ android {
     buildFeatures {
         compose true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion compose_compiler_version
-    }
 }
 
 dependencies {
-
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
-    implementation "androidx.compose.ui:ui:$compose_version"
-    implementation "androidx.compose.material:material:$compose_version"
+    // Compose BOM for version management
+    implementation platform("androidx.compose:compose-bom:$compose_bom_version")
+    androidTestImplementation platform("androidx.compose:compose-bom:$compose_bom_version")
+    
+    implementation 'androidx.core:core-ktx:1.15.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.13.0'
+    
+    // Compose UI
+    implementation "androidx.compose.ui:ui"
+    implementation "androidx.compose.ui:ui-graphics"
+    implementation "androidx.compose.ui:ui-tooling-preview"
+    implementation "androidx.compose.foundation:foundation"
+    
+    // Material Design 3 - Expressive with latest features
     implementation "androidx.compose.material3:material3:$material3_version"
-    implementation "androidx.compose.ui:ui-tooling:$compose_version"
-    implementation "androidx.compose.animation:animation:$compose_version"
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
-    implementation 'androidx.activity:activity-compose:1.8.2'
+    implementation "androidx.compose.material3.adaptive:adaptive:$material3_adaptive_version"
+    implementation "androidx.compose.material3.adaptive:adaptive-layout:$material3_adaptive_version"
+    implementation "androidx.compose.material3.adaptive:adaptive-navigation:$material3_adaptive_version"
+    
+    // Animation - including spring physics and shared element
+    implementation "androidx.compose.animation:animation"
+    implementation "androidx.compose.animation:animation-core"
+    implementation "androidx.compose.animation:animation-graphics"
+    
+    // Material icons extended
+    implementation "androidx.compose.material:material-icons-extended"
+    
+    // Lifecycle
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7'
+    
+    // Activity Compose
+    implementation 'androidx.activity:activity-compose:1.9.3'
+    
+    // Navigation
+    implementation 'androidx.navigation:navigation-compose:2.8.5'
+    
+    // Library module
     implementation project(path: ':library')
-//    implementation "me.nikhilchaudhari:composeNeumorphism:1.0.0-alpha"
+    
+    // Testing
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4"
+    
+    // Debug tooling
+    debugImplementation "androidx.compose.ui:ui-tooling"
+    debugImplementation "androidx.compose.ui:ui-test-manifest"
 }
