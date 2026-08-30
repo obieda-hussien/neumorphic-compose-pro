@@ -2,25 +2,29 @@
 
 # مكتبة Neumorphism UI لأندرويد
 
-مكتبة حديثة ومرنة لواجهة Neumorphism لأندرويد تدعم كل من **Jetpack Compose** و **Views/XML** التقليدية - وفي هذا الفرع (fork) تم تحسينها عشان ترسم نفس الظلال بمعالجة CPU/بطارية أقل بكتير من النسخة الأصلية، من غير أي فرق في الجودة البصرية.
+مكتبة حديثة ومرنة لواجهة Neumorphism لأندرويد تدعم كل من **Jetpack Compose** و**Views/XML** التقليدية - وفي هذا الفرع (fork) تم تحسينها عشان ترسم نفس الظلال بمعالجة CPU/بطارية أقل بكتير من النسخة الأصلية، من غير أي فرق في الجودة البصرية.
 
-[![](https://jitpack.io/v/obieda-hussien/neumorphic-compose-pro.svg)](https://jitpack.io/#obieda-hussien/neumorphic-compose-pro)
+[![](https://jitpack.io/v/obieda-hussien/neumorphic-compose-pro.svg)](https://jitpack.io/#obieda-hussien/neumorphic-compose-pro) ![List of Awesome List Badge](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg) [![Awesome Kotlin Badge](https://kotlin.link/awesome-kotlin.svg)](https://github.com/KotlinBy/awesome-kotlin)
+
+<p align="center">
+<img src="https://github.com/CuriousNikhil/neumorphic-compose/blob/main/static/complete_screen.png?raw=true" height=400>
+</p>
 
 ## المميزات ✨
 
 - 🎨 **دعم Jetpack Compose** - استخدم الـ `neumorphic()` modifier مع أي composable
-- 📱 **دعم XML/Java Views** - NeumorphicView, NeumorphicButton, NeumorphicCardView
+- 📱 **دعم XML/Java Views** - Views تقليدية (NeumorphicView, NeumorphicButton, NeumorphicCardView)
 - 🌓 **دعم الوضع الداكن** - مخططات ألوان مدمجة للوضع الفاتح والداكن
 - 🎭 **دعم Material You** - ألوان ديناميكية على أندرويد 12+
 - 💫 **دعم الأنيميشن** - تأثيرات ضغط سلسة
-- 🔆 **مصدر الإضاءة قابل للتخصيص** - أعلى اليسار، أعلى اليمين، أسفل اليسار، أسفل اليمين
+- 🔆 **مصدر الإضاءة قابل للتخصيص** - TOP_LEFT، TOP_RIGHT، BOTTOM_LEFT، BOTTOM_RIGHT
 - 🔋 **رسم موفّر للطاقة (v3.1.0)** - الظلال بقت متخزنة (cached) ومشتركة بدل ما تتحسب من الصفر كل فريم - التفاصيل في قسم [الأداء](#الأداء)
 
 ## التثبيت
 
 المكتبة منشورة عبر [JitPack](https://jitpack.io/#obieda-hussien/neumorphic-compose-pro).
 
-ضيف مستودع JitPack في `settings.gradle` بتاع المشروع:
+ضيف مستودع JitPack في `settings.gradle` بتاع المشروع (على مستوى المشروع، أو `build.gradle` لو مشروعك أقدم):
 
 ```kotlin
 dependencyResolutionManagement {
@@ -44,7 +48,7 @@ implementation("com.github.obieda-hussien.neumorphic-compose-pro:library:3.1.0")
 implementation("com.github.obieda-hussien.neumorphic-compose-pro:library-views:2.1.0")
 ```
 
-> الـ API العام متغيرش نهائي - نفس الدوال ونفس الاستخدام، بس غيّر إحداثيات الاعتمادية (dependency coordinates) فوق وكل حاجة هتشتغل زي ما هي.
+> جاي من الـ artifact الأصلي `me.nikhilchaudhari:composeNeumorphism`؟ الـ API العام متغيرش نهائي - نفس الدوال ونفس الاستخدام، بس غيّر إحداثيات الاعتمادية (dependency coordinates) فوق وكل حاجة هتشتغل زي ما هي.
 
 ## البداية السريعة
 
@@ -58,7 +62,7 @@ Card(
         .size(200.dp)
         .neumorphic()
 ) {
-    // المحتوى
+    // المحتوى بتاعك
 }
 
 // مع التخصيص
@@ -86,7 +90,19 @@ Button(
     app:neuShape="punched"
     app:neuCornerRadius="12dp"
     app:neuElevation="8dp"
+    app:neuLightShadowColor="@color/white"
+    app:neuDarkShadowColor="@color/gray"
     app:neuLightSource="topLeft" />
+
+<me.nikhilchaudhari.library.views.NeumorphicCardView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:neuShape="pot"
+    app:neuCornerRadius="16dp">
+
+    <!-- المحتوى بتاعك -->
+
+</me.nikhilchaudhari.library.views.NeumorphicCardView>
 ```
 
 ### استخدام Java
@@ -96,27 +112,59 @@ NeumorphicButton button = new NeumorphicButton(context);
 button.setNeuShapeType(NeuShapeType.PUNCHED);
 button.setNeuCornerRadius(dpToPx(12));
 button.setNeuElevation(dpToPx(8));
+button.setNeuLightSource(LightSource.TOP_LEFT);
 ```
 
 ## الأشكال
 
-ثلاثة أشكال متاحة:
+فيه 3 أشكال نيومورفيزم متاحة:
 
-| الشكل | الوصف |
-|-------|--------|
-| `Punched` | تأثير بارز/مرتفع |
-| `Pressed` | تأثير مضغوط/غائر |
-| `Pot` | مزيج من البارز والغائر |
+| الشكل | الوصف | الشكل البصري |
+|-------|-------------|--------|
+| `Punched` | تأثير بارز/مرتفع | `__/‾‾‾‾‾‾‾\__` |
+| `Pressed` | تأثير مضغوط/غائر | `‾‾\________/‾‾` |
+| `Pot` | مزيج من البارز والغائر | `_/\‾‾‾‾‾/\_` |
+
+كل شكل بيدعم نوعين من الحواف:
+- **Rounded** - نصف قطر حافة قابل للتخصيص
+- **Oval** - شكل دائري/بيضاوي
+
+```kotlin
+// Compose
+Punched.Rounded(radius = 12.dp)
+Punched.Oval()
+Pressed.Rounded(radius = 8.dp)
+Pressed.Oval()
+Pot.Rounded(radius = 16.dp)
+Pot.Oval()
+```
 
 ## خيارات التخصيص
 
 | المعامل | القيمة الافتراضية | الوصف |
-|---------|-------------------|--------|
-| `neuShape` | `Punched.Rounded(12.dp)` | نوع الشكل |
+|-----------|---------|-------------|
+| `neuShape` | `Punched.Rounded(12.dp)` | نوع الشكل وإعدادات الحواف |
 | `lightShadowColor` | `Color.White` | لون الظل الفاتح |
 | `darkShadowColor` | `Color.LightGray` | لون الظل الداكن |
-| `elevation` | `6.dp` | عمق الظل |
+| `elevation` | `6.dp` | عمق/ارتفاع الظل |
+| `strokeWidth` | `6.dp` | عرض الظل الداخلي |
+| `neuInsets` | `NeuInsets(6.dp, 6.dp)` | هوامش الظل (أفقي، رأسي) |
 | `lightSource` | `LightSource.TOP_LEFT` | اتجاه مصدر الإضاءة |
+
+## مصدر الإضاءة
+
+اضبط اتجاه مصدر الإضاءة عشان تغيّر مكان الظل:
+
+```kotlin
+// Compose
+Modifier.neumorphic(
+    lightSource = LightSource.TOP_LEFT    // الافتراضي
+    // أو
+    lightSource = LightSource.TOP_RIGHT
+    lightSource = LightSource.BOTTOM_LEFT
+    lightSource = LightSource.BOTTOM_RIGHT
+)
+```
 
 ## دعم الثيمات
 
@@ -125,8 +173,8 @@ button.setNeuElevation(dpToPx(8));
 ```kotlin
 @Composable
 fun ThemedCard() {
-    val colorScheme = NeuTheme.colorScheme() // فاتح/داكن تلقائياً
-    
+    val colorScheme = NeuTheme.colorScheme() // فاتح/داكن تلقائيًا
+
     Card(
         backgroundColor = colorScheme.backgroundColor,
         modifier = Modifier.themedNeumorphic(colorScheme)
@@ -142,7 +190,7 @@ fun ThemedCard() {
 @Composable
 fun DynamicThemedCard() {
     val colorScheme = NeuTheme.dynamicColorScheme()
-    
+
     Card(
         backgroundColor = colorScheme.backgroundColor,
         modifier = Modifier.themedNeumorphic(colorScheme)
@@ -152,54 +200,122 @@ fun DynamicThemedCard() {
 }
 ```
 
+### مخطط ألوان مخصص
+
+```kotlin
+val customScheme = NeuTheme.customColorScheme(
+    backgroundColor = Color(0xFFE0E5EC)
+)
+```
+
+## الأنيميشن
+
+### تأثير ضغط متحرك (Compose)
+
+```kotlin
+Modifier.animatedNeumorphic(
+    neuShape = Punched.Rounded(),
+    elevation = 8.dp,
+    pressed = isPressed, // من حالة التفاعل (interaction state)
+    animationDuration = 150
+)
+```
+
+### Clickable مع أنيميشن
+
+```kotlin
+Modifier.neumorphicClickable(
+    onClick = { /* الحدث */ },
+    elevation = 8.dp,
+    neuShape = Punched.Rounded()
+)
+```
+
+### أنيميشن XML Views
+
+الأزرار عندها أنيميشن ضغط مدمج. فعّله/عطّله بـ:
+
+```kotlin
+button.enablePressAnimation = true
+```
+
+## دوال مساعدة (Utility Extensions)
+
+```kotlin
+// نيومورفيزم خفيف (elevation أقل)
+Modifier.softNeumorphic()
+
+// نيومورفيزم عميق (elevation أكتر)
+Modifier.deepNeumorphic()
+
+// توليد ألوان الظل من لون الخلفية
+val (lightShadow, darkShadow) = backgroundColor.toNeuColors()
+
+// تفتيح/تغميق الألوان
+val lighter = color.lighten(0.2f)
+val darker = color.darken(0.2f)
+```
+
+## أفضل الممارسات
+
+1. **استخدم ألوان متقاربة**: لون الخلفية والظل لازم يكونوا متشابهين للحصول على أفضل تأثير
+2. **تجنب الأبيض/الأسود النقي**: استخدم درجات قريبة من الأبيض/الرمادي الغامق عشان ظلال واقعية
+3. **حافظ على اتساق مصدر الإضاءة**: خلّي مصدر الإضاءة ثابت في كل واجهتك
+4. **استخدم elevation مناسب**: من 4 لـ 12dp بيناسب معظم الحالات
+5. **استخدم Clip مع شكل Pressed**: استخدم `Modifier.clip()` لما تستخدم شكل `Pressed`
+
 ## الأداء
 
 كل ظل نيومورفيزم عبارة عن bitmap متعمّلها blur، والنسخة الأصلية كانت بتعيد توليد الـ bitmap **من الصفر في كل استدعاء رسم**، بما فيها كل فريم في أنيميشن الضغط. النسخة دي (`3.1.0` / `2.1.0`) بتحافظ على نفس الشكل البصري بالظبط بس بتغيّر عدد مرات الشغل ده وتكلفته.
 
 ### السبب الحقيقي لاستنزاف البطارية والتهنيج عند الفتح
 
-1. **كان بيتعمل `RenderScript` context جديد كل recomposition** — يعني وقت أنيميشن الضغط كان بيتعمل context تقيل جدًا لحد 60 مرة/ثانية لكل كومبوننت.
-2. **صفر caching** — كارتين متطابقين في LazyColumn كانوا بيولّدوا كل واحد الـ bitmap بتاعه لوحده رغم إن الناتج متطابق تمامًا.
-3. **الـ blur كان بيشتغل على الدقة الكاملة** رغم إن الـ blur نفسه بيفقد التفاصيل الدقيقة أصلاً.
-4. **كل كومبوننت كان عنده RenderScript context خاص بيه** — شاشة عادية فيها 15-20+ كومبوننت نيومورفيزم (هيدر، بحث، كروت، أزرار...)، يعني 15-20+ context تقيل بيتعملوا كلهم مع بعض في أول فريم — وده سبب التهنيج عند فتح التطبيق.
+1. **كان بيتعمل `RenderScript` context جديد كل recomposition** - الـ modifier اللي بيمتلك مسار الـ blur كان بيتبني من جديد كل مرة خاصية متحركة (زي الـ elevation وقت الضغط) بتتغيّر - يعني على API أقل من 31، كان بيتعمل `RenderScript` context جديد (من أتقل الكائنات في أندرويد) وبيتقفل لحد 60 مرة/ثانية، لكل كومبوننت نيومورفيزم.
+2. **صفر caching خالص.** كارتين متطابقين في `LazyColumn`، أو زرار بيرجع لنفس الـ elevation بعد ما يتضغط، كل واحد فيهم كان بيولّد `GradientDrawable` + `Bitmap` + blur كامل على CPU بمفرده، رغم إن الناتج متطابق بكسل ببكسل.
+3. **الـ blur كان بيشتغل على الدقة الكاملة للـ bitmap**، رغم إن الـ blur نفسه (Gaussian/stack blur) بيفقد التفاصيل الدقيقة أصلاً - يعني الدقة الزيادة دي كانت بتترمي من غير فايدة.
+4. **كل كومبوننت نيومورفيزم كان عنده RenderScript context خاص بيه.** شاشة عادية (هيدر، شريط بحث، صف من الأزرار السريعة، كذا كارت، سويتشات) بسهولة فيها 15-20+ كومبوننت نيومورفيزم. حتى مع إصلاح رقم 1، كان لسه فيه 15-20+ context منفصل بيتعملوا كلهم في نفس الوقت أثناء أول فريم - وده تقيل بما يكفي على الـ main thread إنه يبان كتهنيج/تجميد للتطبيق لحظة الفتح.
 
 ### إيه اللي اتغيّر
 
 | الإصلاح | الأثر |
 |---|---|
-| `BlurMaker` (والـ RenderScript بتاعه) بقى **singleton واحد على مستوى التطبيق كله** (`NeuBlurMakerHolder`) بدل واحد لكل كومبوننت | أقصى حاجة context واحد بس يتعمل طول عمر التطبيق — ده اللي بيحل مشكلة التهنيج عند الفتح |
-| إعادة استخدام نفس `ScriptIntrinsicBlur` بدل إنشاءه كل مرة | يقلل تكلفة مسار RenderScript أكتر |
-| كاش LRU مشترك على مستوى التطبيق للظلال (`NeuShadowCache`) | الكومبوننتس المتطابقة (عناصر list، أزرار في وضع الراحة) بتشارك نفس الـ bitmap |
-| تقريب الـ elevation لأقرب 0.5dp في مفتاح الكاش | أنيميشن الضغط (لحد 200 فريم) بيتحول لعدد بسيط من الـ bitmaps المُعاد استخدامها بدل واحد لكل فريم |
-| الـ blur بقى بيشتغل على دقة مخفّضة (÷2) وبعدين يكبّر تاني | تقليل شغل CPU حوالي 4 أضعاف من غير أي فرق ملحوظ في الجودة |
+| `BlurMaker` (والـ `RenderScript` بتاعه) بقى **singleton واحد على مستوى التطبيق كله** (`NeuBlurMakerHolder`) مشترك بين كل استدعاء `neumorphic()` وكل XML view | أقصى حاجة، context واحد بس يتعمل طول عمر التطبيق مهما كان عدد الكومبوننتس - ده اللي بيحل مشكلة التهنيج عند الفتح |
+| إعادة استخدام نفس `ScriptIntrinsicBlur` بدل إنشاءه كل مرة | يقلل تكلفة مسار RenderScript المتبقية أكتر |
+| كاش LRU مشترك على مستوى التطبيق للظلال (`NeuShadowCache`)، بمفتاح مبني على الحجم/الـ elevation/الألوان/الشكل/مصدر الإضاءة | الكومبوننتس المتطابقة (عناصر list، أزرار في وضع الراحة) بتشارك نفس الـ bitmap بدل ما كل واحد يولّد بتاعه |
+| تقريب الـ elevation/الـ stroke لأقرب 0.5dp في مفتاح الكاش | أنيميشن ضغط بـ ~200 فريم بيتحول لعدد بسيط من الـ bitmaps المُعاد استخدامها بدل واحد لكل فريم - الفرق مش محسوس بصريًا |
+| الـ blur بقى بيشتغل على دقة مخفّضة (÷2) وبعدين يكبّر تاني | تقريبًا 4 أضعاف بكسلات أقل بيلمسها الـ CPU blur loop، من غير أي فرق ملحوظ في الجودة لأن الـ blur أصلاً بيفقد التفاصيل دي |
 
-الـ API العام متغيرش خالص — `neumorphic()`, `animatedNeumorphic()`, `springNeumorphic()`, `expressiveNeumorphic()`, وكل الـ XML views شغالة زي ما هي.
+الـ API العام متغيرش خالص - `neumorphic()`، `animatedNeumorphic()`، `springNeumorphic()`، `expressiveNeumorphic()`، وكل الـ XML views شغالة زي ما هي بالظبط.
 
 ### اختياري: تسخين مسبق (warm-up) قبل أول فريم
 
-لو الشاشة الأولى في تطبيقك مليانة كومبوننتس نيومورفيزم، تقدر تعمل warm-up للـ RenderScript context في الخلفية قبل ما الواجهة تحتاجه:
+الـ `RenderScript` context المشترك لسه بيتعمل lazy عند أول استخدام - افتراضيًا ده أول فريم بيرسم فيه كومبوننت نيومورفيزم. لو أول شاشة في تطبيقك مليانة كومبوننتس نيومورفيزم، تقدر تلغي التأخير ده تمامًا بعمل warm-up في الخلفية قبل ما الواجهة تحتاجه:
 
 ```kotlin
 class MyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // في الخلفية - بيعمل الـ RenderScript context المشترك بدري
+        // عشان أول فريم نيومورفيزم متستناش عليه.
         Thread { NeuBlurMakerHolder.warmUp(this) }.start()
     }
 }
 ```
 
-اختياري بالكامل وآمن تعمله كذا مرة.
+ده تحسين اختياري بالكامل - آمن تتخطاه، أو تناديه كذا مرة، أو تناديه من أي مكان؛ الـ singleton بيعمل الشغل التقيل مرة واحدة بس.
 
 ### تطبيق الديمو: حجم أصغر وكود مظبوط
 
-- شلت `material-icons-extended` (~5000 أيقونة، كذا ميجا) واستبدلتها بـ `material-icons-core` اللي فيها كل الأيقونات المستخدمة فعليًا (~10 أيقونات بس).
-- شلت `navigation-compose` والـ 3 مكتبات `material3-adaptive` لأنهم مش مستخدمين نهائي في كود الديمو.
-- فعّلت `minifyEnabled` + `shrinkResources` لنسخة الـ release (كانت متعطلة تمامًا قبل كده).
-- صلّحت شرط ميت في أيقونة الإشعارات في الهيدر كان بيرجع نفس الأيقونة في الحالتين.
+موديول الـ `app` (تطبيق الديمو في الريبو، مش المكتبة نفسها) كان فيه كمان شوية مشاكل مش متعلقة بالأداء خلته أكبر وأبطأ في التثبيت من غير داعي:
+
+- شلت `material-icons-extended` (~5000 أيقونة، كذا ميجا) - الديمو بيستخدم حوالي 10 أيقونات بس، وكلها موجودة في `material-icons-core` الأصغر بكتير.
+- شلت `navigation-compose` والـ 3 مكتبات `material3-adaptive` - مش مستخدمين نهائي في كود الديمو.
+- فعّلت `minifyEnabled` + `shrinkResources` لنسخة الـ release (كانت `minifyEnabled false`، يعني الـ APK بينشحن من غير أي تقليص).
+- صلّحت شرط ميت (dead conditional) في أيقونة الإشعارات بالهيدر كان بيرجع نفس الأيقونة في الحالتين (مفعّل/معطّل) بغض النظر عن الحالة.
 
 ### ضبط تكلفة الكاش/البلور عن طريق `NeuPerformanceConfig`
 
-القيم الافتراضية (downsampling ÷2، كاش 6MB) مناسبة لمعظم الحالات. لو تطبيقك مستهدف أجهزة ضعيفة، أو عنده عدد كبير من الأشكال النيومورفيزم *المختلفة* في نفس الوقت:
+القيم الافتراضية (downsampling ÷2، كاش 6MB) مختارة عشان تكون آمنة لمعظم الواجهات. لو تطبيقك مستهدف أجهزة ضعيفة، أو عنده عدد كبير وغير عادي من الأشكال النيومورفيزم *المختلفة* في نفس الوقت (يعني الكاش المشترك بيستفاد منه أقل):
 
 ```kotlin
 class MyApplication : Application() {
@@ -211,34 +327,57 @@ class MyApplication : Application() {
 }
 ```
 
-اضبطها مرة واحدة بدري قبل أي رسم لكومبوننت نيومورفيزم. آمن تغيّرها بعدين كمان — التغيير بيأثر بس على الظلال اللي هتتولّد بعد كده.
+اضبطها مرة واحدة، بدري، قبل أي رسم لكومبوننت نيومورفيزم. آمن تغيّرها بعدين كمان - التغيير بيأثر بس على الظلال اللي هتتولّد بعد كده، مش الحاجات المرسومة بالفعل.
 
 ### Baseline Profiles
 
-المكتبة بتشحن ملف `baseline-prof.txt` (في `library/src/main/`) فيه أهم الكلاسات اللي بتشتغل باستمرار (البلور، الكاش، الأشكال). Gradle بيدمجه تلقائيًا في أي تطبيق بيستخدم المكتبة — من غير أي إعداد إضافي منك.
+المكتبة بتشحن ملف `baseline-prof.txt` مدمج (في `library/src/main/`) فيه أهم الكلاسات اللي بتشتغل باستمرار (مسار الـ blur، كاش الظلال، شجرة الأشكال). AGP بيدمجه تلقائيًا في baseline profile أي تطبيق بيستخدم المكتبة وقت البناء - من غير أي إعداد إضافي منك غير إنك تعتمد على المكتبة عادي.
 
-بصراحة: ده ملف مكتوب يدويًا على مستوى الكلاس بس (مش method-level)، مش متولّد من قياس فعلي على جهاز — لأن دوال الـ Compose composable زي `neumorphic()` بيتولدلها أسماء داخلية معقدة (mangled) صعب تخمينها صح من غير أدوات فعلية. لو عايز بروفايل أدق، تقدر تولّده من جهاز حقيقي عن طريق [Macrobenchmark + Baseline Profile Gradle plugin](https://developer.android.com/topic/performance/baselineprofiles/create-baselineprofile).
+عشان أكون صريح: ده ملف مكتوب يدويًا على مستوى الكلاس بس (مش method-level)، مش متولّد من قياس فعلي على جهاز. هو بيقول لـ ART "استنى الكلاسات دي بدري، اعمل preload/verify ليها قبل ما تتحتاج" - فايدة حقيقية بس متواضعة. متعمدين مافيهوش قواعد على مستوى الدوال لـ composable functions زي `neumorphic()`/`animatedNeumorphic()`/`springNeumorphic()`، لأن الـ Compose compiler بيولّد أسماء داخلية معقدة (mangled) ودوال default-argument صناعية، صعب تتخمّن صح من غير أدوات فعلية. لو عايز بروفايل أدق (يشمل نقاط الدخول دي كمان)، تقدر تولّده من جهاز حقيقي عن طريق [Macrobenchmark + Baseline Profile Gradle plugin](https://developer.android.com/topic/performance/baselineprofiles/create-baselineprofile) على تطبيق الديمو، وتدمج السطور المهمة في الملف المدمج.
 
-## أفضل الممارسات
+### خطط مستقبلية (Roadmap)
 
-1. **استخدم ألوان متطابقة**: يجب أن تكون ألوان الخلفية والظل متشابهة
-2. **تجنب الأبيض/الأسود النقي**: استخدم ألوان رمادية للحصول على ظلال واقعية
-3. **حافظ على اتساق مصدر الإضاءة**: اجعل مصدر الإضاءة ثابتاً في واجهتك
-4. **استخدم elevation مناسب**: 4-12dp يعمل بشكل أفضل لمعظم الحالات
+- دراسة الـ blur عن طريق `RenderEffect`/GPU compositor على API 31+ كبديل بدون أي تكلفة CPU لمسار StackBlur المخفّض الدقة الحالي (مخاطرة تنفيذ أعلى - محتاج تأكيد على جهاز حقيقي قبل النشر).
+- توليد baseline profile حقيقي عن طريق Macrobenchmark (الحالي مكتوب يدويًا وعلى مستوى الكلاس بس، شوف قسم [Baseline Profiles](#baseline-profiles) فوق) لما يبقى متاح جهاز/إيميوليتر أشغّله عليه ضد تطبيق الديمو.
+- توسيع `NeuPerformanceConfig` أكتر لو الاستخدام الفعلي وضّح احتياج ليه (زي إعدادات مخصصة لكل شكل، أو تعطيل الـ downsampling للأسطح المرتفعة جدًا اللي ممكن يبان فيها الفرق).
+
+## الترقية من v1.x
+
+```kotlin
+// v1.x
+Modifier.neumorphic(
+    neuShape = Punched.Rounded(),
+    elevation = 6.dp
+)
+
+// v2.0 - نفس الـ API، مميزات جديدة
+Modifier.neumorphic(
+    neuShape = Punched.Rounded(),
+    elevation = 6.dp,
+    lightSource = LightSource.TOP_LEFT // جديد
+)
+```
 
 ## المتطلبات
 
-- **الحد الأدنى للـ SDK**: 21 (أندرويد 5.0)
-- **الـ SDK المستهدف**: 34 (أندرويد 14)
-- **Compose**: 1.5.4+
-- **Kotlin**: 1.9.20+
+- **الحد الأدنى للـ SDK**: 24 (أندرويد 7.0) لكل من `library` (Compose) و`library-views` (XML/Views)
+- **Compile/Target SDK**: 35 (أندرويد 15)
+- **Compose BOM**: 2026.08.00
+- **Kotlin**: 2.3.0
+- **AGP**: 8.13.0 (متطلب وقت البناء للمساهمين في المكتبة فقط؛ مش قيد على مستخدمي المكتبة)
+- **Java**: توافقية 17 (source/target)
 
 ## الرخصة
 
-مرخص تحت Apache License, Version 2.0
+مرخّص تحت Apache License, Version 2.0 [هنا](https://github.com/CuriousNikhil/neumorphic-compose/blob/main/LICENSE)
 
 ## المساهمة
 
 المساهمات مرحب بها! لا تتردد في تقديم issues و pull requests.
+
+## شكر وتقدير
+
+- خوارزمية Stack Blur بواسطة Mario Klingemann
+- فكرة تصميم Neumorphism الأصلية من Alexander Plyuto
 
 </div>
