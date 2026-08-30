@@ -1,18 +1,16 @@
 apply plugin: 'maven-publish'
-apply plugin: 'signing'
 
 task androidSourcesJar(type: Jar) {
     archiveClassifier.set('sources')
     if (project.plugins.findPlugin("com.android.library")) {
-
         from android.sourceSets.main.java.srcDirs
         from android.sourceSets.main.kotlin.srcDirs
     } else {
-
         from sourceSets.main.java.srcDirs
         from sourceSets.main.kotlin.srcDirs
     }
 }
+
 artifacts {
     archives androidSourcesJar
 }
@@ -24,7 +22,6 @@ afterEvaluate {
     publishing {
         publications {
             release(MavenPublication) {
-
                 groupId PUBLISH_GROUP_ID
                 artifactId PUBLISH_ARTIFACT_ID
                 version PUBLISH_VERSION
@@ -36,40 +33,30 @@ afterEvaluate {
                 }
 
                 artifact androidSourcesJar
-//                artifact javadocJar
 
                 pom {
-                    name = 'ComposeNeumorphism'
-                    description = 'An experimental Neumorphism UI library for Jetpack Compose'
-                    url = 'https://github.com/CuriousNikhil/neumorphic-compose'
+                    name = PUBLISH_ARTIFACT_ID
+                    description = 'Optimized High Performance Neumorphism UI library for Android Compose & Views'
+                    url = 'https://github.com/obieda-hussien/neumorphic-compose-pro'
                     licenses {
                         license {
                             name = 'Apache License, Version 2.0'
-                            url = 'https://github.com/CuriousNikhil/neumorphic-compose/blob/main/LICENSE'
+                            url = 'https://github.com/obieda-hussien/neumorphic-compose-pro/blob/main/LICENSE'
                         }
                     }
                     developers {
                         developer {
-                            id = 'curiousnikhil'
-                            name = 'Nikhil Chaudhari'
-                            email = 'nikhyl777@gmail.com'
+                            id = 'obieda-hussien'
+                            name = 'Obieda Hussien'
                         }
                     }
                     scm {
-                        connection = 'scm:git:git://github.com/CuriousNikhil/neumorphic-compose.git'
-                        developerConnection = 'scm:git:ssh://github.com/CuriousNikhil/neumorphic-compose.git'
-                        url = 'https://github.com/CuriousNikhil/neumorphic-compose'
+                        connection = 'scm:git:git://github.com/obieda-hussien/neumorphic-compose-pro.git'
+                        developerConnection = 'scm:git:ssh://github.com/obieda-hussien/neumorphic-compose-pro.git'
+                        url = 'https://github.com/obieda-hussien/neumorphic-compose-pro'
                     }
                 }
             }
         }
     }
-}
-
-ext["signing.keyId"] = rootProject.ext["signing.keyId"]
-ext["signing.password"] = rootProject.ext["signing.password"]
-ext["signing.secretKeyRingFile"] = rootProject.ext["signing.secretKeyRingFile"]
-
-signing {
-    sign publishing.publications
 }

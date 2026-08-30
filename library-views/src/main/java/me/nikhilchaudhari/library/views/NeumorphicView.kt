@@ -1,134 +1,117 @@
 package me.nikhilchaudhari.library.views
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.util.AttributeSet
-import android.view.View
-import androidx.core.content.ContextCompat
+import android.widget.FrameLayout
 import me.nikhilchaudhari.library.LightSource
 import me.nikhilchaudhari.library.internal.BlurMaker
+import me.nikhilchaudhari.library.internal.NeuCache
 import me.nikhilchaudhari.library.internal.stackBlur
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/**
- * Shape types for neumorphic views
- */
 enum class NeuShapeType {
-    PUNCHED,
-    PRESSED,
-    POT
+    PUNCHED, PRESSED, POT
 }
 
-/**
- * Corner types for neumorphic views
- */
 enum class NeuCornerType {
-    ROUNDED,
-    OVAL
+    ROUNDED, OVAL
 }
 
-/**
- * Base class for neumorphic views that can be used in XML layouts
- * Supports Java/Kotlin Android development with traditional Views
- */
 open class NeumorphicView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+) : FrameLayout(context, attrs, defStyleAttr) {
 
-    // Neumorphic properties
     var neuShapeType: NeuShapeType = NeuShapeType.PUNCHED
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
     var neuCornerType: NeuCornerType = NeuCornerType.ROUNDED
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
     var neuCornerRadius: Float = 12f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
     var neuLightShadowColor: Int = Color.WHITE
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
     var neuDarkShadowColor: Int = Color.LTGRAY
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
     var neuElevation: Float = 6f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
     var neuStrokeWidth: Float = 6f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
     var neuInsetHorizontal: Float = 6f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
     var neuInsetVertical: Float = 6f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
     var neuLightSource: LightSource = LightSource.TOP_LEFT
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
     var neuBackgroundColor: Int = Color.parseColor("#ECEAEB")
         set(value) {
             field = value
-            invalidate()
+            refresh()
         }
 
-    // Internal blur maker
-    private var blurMaker: BlurMaker? = null
-
-    // Cached bitmaps for performance
     private var lightShadowBitmap: Bitmap? = null
     private var darkShadowBitmap: Bitmap? = null
     private var foregroundShadowBitmap: Bitmap? = null
-    private var needsRedraw = true
 
-    // Paint objects
+    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        isFilterBitmap = true
+
+    private val blurMaker: BlurMaker by lazy {
+        BlurMaker(context, calculateDefaultBlurRadius())
     }
 
+    private var needsRedraw = true
+
     init {
-        // Initialize blur maker
-        blurMaker = BlurMaker(context, calculateDefaultBlurRadius())
-        
-        // Parse XML attributes
         attrs?.let {
-            val typedArray = context.obtainStyledAttributes(it, R.styleable.NeumorphicView)
+            val typedArray = context.obtainStyledAttributes(it, R.styleable.NeumorphicView, 0, 0)
             
             neuShapeType = when (typedArray.getInt(R.styleable.NeumorphicView_neuShape, 0)) {
                 0 -> NeuShapeType.PUNCHED
@@ -136,13 +119,13 @@ open class NeumorphicView @JvmOverloads constructor(
                 2 -> NeuShapeType.POT
                 else -> NeuShapeType.PUNCHED
             }
-            
+
             neuCornerType = when (typedArray.getInt(R.styleable.NeumorphicView_neuCornerType, 0)) {
                 0 -> NeuCornerType.ROUNDED
                 1 -> NeuCornerType.OVAL
                 else -> NeuCornerType.ROUNDED
             }
-            
+
             neuCornerRadius = typedArray.getDimension(
                 R.styleable.NeumorphicView_neuCornerRadius, 12f.dpToPx()
             )
@@ -186,15 +169,11 @@ open class NeumorphicView @JvmOverloads constructor(
             typedArray.recycle()
         }
         
-        // Enable drawing
         setWillNotDraw(false)
         
-        // Set layer type for proper shadow rendering
-        // Use hardware layer on modern devices, fall back to software for complex operations
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             setLayerType(LAYER_TYPE_HARDWARE, null)
         } else {
-            // Software layer required for blur effects on older devices
             setLayerType(LAYER_TYPE_SOFTWARE, null)
         }
     }
@@ -202,7 +181,6 @@ open class NeumorphicView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         needsRedraw = true
-        invalidateShadowBitmaps()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -223,25 +201,18 @@ open class NeumorphicView @JvmOverloads constructor(
     }
 
     private fun drawPunched(canvas: Canvas) {
-        // Draw background shadows first
         drawBackgroundShadows(canvas)
-        // Draw the actual background
         drawNeumorphicBackground(canvas)
     }
 
     private fun drawPressed(canvas: Canvas) {
-        // Draw the actual background first
         drawNeumorphicBackground(canvas)
-        // Draw foreground shadows
         drawForegroundShadows(canvas)
     }
 
     private fun drawPot(canvas: Canvas) {
-        // Draw background shadows
         drawBackgroundShadows(canvas)
-        // Draw the actual background
         drawNeumorphicBackground(canvas)
-        // Draw foreground shadows
         drawForegroundShadows(canvas)
     }
 
@@ -295,17 +266,24 @@ open class NeumorphicView @JvmOverloads constructor(
     }
 
     private fun generateShadowBitmaps() {
-        invalidateShadowBitmaps()
-        
         if (width <= 0 || height <= 0) return
 
-        // Generate background shadows
-        lightShadowBitmap = generateShadowBitmap(neuLightShadowColor)
-        darkShadowBitmap = generateShadowBitmap(neuDarkShadowColor)
+        val lightKey = "xml_light_${width}_${height}_${neuCornerType}_${neuCornerRadius}_${neuElevation}_${neuLightShadowColor}"
+        val darkKey = "xml_dark_${width}_${height}_${neuCornerType}_${neuCornerRadius}_${neuElevation}_${neuDarkShadowColor}"
+        val fgKey = "xml_fg_${width}_${height}_${neuCornerType}_${neuCornerRadius}_${neuElevation}_${neuStrokeWidth}_${neuLightSource}"
 
-        // Generate foreground shadows for pressed and pot shapes
+        lightShadowBitmap = NeuCache.get(lightKey) ?: generateShadowBitmap(neuLightShadowColor)?.also {
+            NeuCache.put(lightKey, it)
+        }
+
+        darkShadowBitmap = NeuCache.get(darkKey) ?: generateShadowBitmap(neuDarkShadowColor)?.also {
+            NeuCache.put(darkKey, it)
+        }
+
         if (neuShapeType == NeuShapeType.PRESSED || neuShapeType == NeuShapeType.POT) {
-            foregroundShadowBitmap = generateForegroundShadowBitmap()
+            foregroundShadowBitmap = NeuCache.get(fgKey) ?: generateForegroundShadowBitmap()?.also {
+                NeuCache.put(fgKey, it)
+            }
         }
     }
 
@@ -333,7 +311,7 @@ open class NeumorphicView @JvmOverloads constructor(
         canvas.translate(neuElevation, neuElevation)
         drawable.draw(canvas)
 
-        return blurMaker?.blur(bitmap) ?: bitmap.stackBlur(calculateDefaultBlurRadius())
+        return blurMaker.blur(bitmap) ?: bitmap.stackBlur(calculateDefaultBlurRadius())
     }
 
     private fun generateForegroundShadowBitmap(): Bitmap? {
@@ -344,7 +322,6 @@ open class NeumorphicView @JvmOverloads constructor(
         
         val (lightOffsetX, lightOffsetY) = getLightOffset()
 
-        // Light shadow stroke
         val lightDrawable = GradientDrawable().apply {
             setSize(width + neuElevation.toInt(), height + neuElevation.toInt())
             setStroke(neuStrokeWidth.toInt(), neuLightShadowColor)
@@ -359,7 +336,6 @@ open class NeumorphicView @JvmOverloads constructor(
             }
         }
 
-        // Dark shadow stroke
         val darkDrawable = GradientDrawable().apply {
             setSize(width + neuElevation.toInt(), height + neuElevation.toInt())
             setStroke(neuStrokeWidth.toInt(), neuDarkShadowColor)
@@ -381,7 +357,7 @@ open class NeumorphicView @JvmOverloads constructor(
 
         darkDrawable.draw(canvas)
 
-        return blurMaker?.blur(bitmap) ?: bitmap.stackBlur(calculateDefaultBlurRadius())
+        return blurMaker.blur(bitmap) ?: bitmap.stackBlur(calculateDefaultBlurRadius())
     }
 
     private fun getLightOffset(): Pair<Float, Float> {
@@ -402,15 +378,6 @@ open class NeumorphicView @JvmOverloads constructor(
         }
     }
 
-    private fun invalidateShadowBitmaps() {
-        lightShadowBitmap?.recycle()
-        darkShadowBitmap?.recycle()
-        foregroundShadowBitmap?.recycle()
-        lightShadowBitmap = null
-        darkShadowBitmap = null
-        foregroundShadowBitmap = null
-    }
-
     private fun calculateDefaultBlurRadius(): Int {
         val density = resources.displayMetrics.density
         return min(25, (density * 10).roundToInt())
@@ -420,15 +387,6 @@ open class NeumorphicView @JvmOverloads constructor(
         return this * resources.displayMetrics.density
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        invalidateShadowBitmaps()
-    }
-
-    /**
-     * Refresh the neumorphic effect
-     * Call this after changing properties programmatically
-     */
     fun refresh() {
         needsRedraw = true
         invalidate()

@@ -1,159 +1,90 @@
 <div dir="rtl">
 
-# مكتبة Neumorphism UI لأندرويد
+# مكتبة Neumorphism UI Pro لأندرويد 🚀
 
-مكتبة حديثة ومرنة لواجهة Neumorphism لأندرويد تدعم كل من **Jetpack Compose** و **Views/XML** التقليدية.
+[![JitPack](https://jitpack.io/v/obieda-hussien/neumorphic-compose-pro.svg)](https://jitpack.io/#obieda-hussien/neumorphic-compose-pro)
+![الرخصة](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
+![أندرويد](https://img.shields.io/badge/Android-5.0%2B-brightgreen.svg)
 
-## المميزات ✨
+مكتبة واجهات neumorphic فائقة الأداء ومحسّنة بالكامل لأندرويد تدعم **Jetpack Compose** و **XML / Views** التقليدية.
 
-- 🎨 **دعم Jetpack Compose** - استخدم الـ `neumorphic()` modifier مع أي composable
-- 📱 **دعم XML/Java Views** - NeumorphicView, NeumorphicButton, NeumorphicCardView
-- 🌓 **دعم الوضع الداكن** - مخططات ألوان مدمجة للوضع الفاتح والداكن
-- 🎭 **دعم Material You** - ألوان ديناميكية على أندرويد 12+
-- 💫 **دعم الأنيميشن** - تأثيرات ضغط سلسة
-- 🔆 **مصدر الإضاءة قابل للتخصيص** - أعلى اليسار، أعلى اليمين، أسفل اليسار، أسفل اليمين
-- 🛠 **تنفيذ حديث** - انتقال من RenderScript القديم إلى StackBlur
+تمت إعادة هيكلتها وتطويرها للقضاء على التقطيع (Lag)، وتوفير البطارية، وتخزين الظلال مؤقتاً في الذاكرة (LRU Cache)، وتكامل كامل مع **Material 3 Expressive**.
 
-## التثبيت
+---
 
-### مكتبة Jetpack Compose
+## أبرز التحسينات والأداء ⚡
+
+- ⚡ **سرعة فائقة وسلاسة في التشغيل**: استخدام `NeuCache` (LruCache) لتخزين الظلال المنفذة سابقاً وإعادة استخدامها دون الحاجة لإعادة التنعيم والبلور (Blur) عند كل رندر أو سكرول.
+- 🔋 **توفير البطارية والموارد**: تقليل ضغط الـ Garbage Collector والذاكرة لضمان عدم استنزاف عتاد الجهاز.
+- 🎨 **دعم كامل لـ Jetpack Compose**: استخدام modifiers مثل `neumorphic()`, `animatedNeumorphic()`, `springNeumorphic()`, و `expressiveNeumorphic()`.
+- 📱 **دعم XML / Android Views**: عناصر `NeumorphicView`, `NeumorphicButton`, و `NeumorphicCardView` عالية الأداء.
+- 🎭 **Material Design 3 Expressive**: فيزياء الزنبرك (Spring Physics) والألوان الديناميكية على Android 12+.
+
+---
+
+## التثبيت عبر JitPack 📦
+
+### 1. إضافة مستودع JitPack
+
+أضف مستودع JitPack في ملف `settings.gradle` أو `settings.gradle.kts`:
 
 ```kotlin
-implementation("me.nikhilchaudhari:composeNeumorphism:2.0.0")
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
 ```
 
-### مكتبة XML/Views
+### 2. إضافة التبعيات (Dependencies)
 
+في ملف `build.gradle` الخاص بالموديول/التطبيق:
+
+#### مكتبة Jetpack Compose
 ```kotlin
-implementation("me.nikhilchaudhari:neumorphismViews:2.0.0")
+implementation("com.github.obieda-hussien:neumorphic-compose-pro:3.0.0")
 ```
 
-## البداية السريعة
+#### مكتبة XML / Android Views
+```kotlin
+implementation("com.github.obieda-hussien:neumorphic-views-pro:3.0.0")
+```
+
+---
+
+## البداية السريعة 🏁
 
 ### Jetpack Compose
 
 ```kotlin
-// استخدام بسيط
-Card(
+// عنصر نيومورفك أساسي
+Box(
     modifier = Modifier
-        .padding(16.dp)
-        .size(200.dp)
-        .neumorphic()
-) {
-    // المحتوى
-}
-
-// مع التخصيص
-Button(
-    modifier = Modifier
+        .size(150.dp)
         .neumorphic(
-            neuShape = Punched.Rounded(radius = 12.dp),
-            elevation = 8.dp,
-            lightShadowColor = Color.White,
-            darkShadowColor = Color.Gray,
+            neuShape = Punched.Rounded(16.dp),
+            elevation = 6.dp,
             lightSource = LightSource.TOP_LEFT
         )
 ) {
-    Text("اضغط هنا")
+    Text("Pro Neumorphic Card", modifier = Modifier.align(Alignment.Center))
 }
 ```
 
-### XML Layout
+---
 
-```xml
-<me.nikhilchaudhari.library.views.NeumorphicButton
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="زر Neumorphic"
-    app:neuShape="punched"
-    app:neuCornerRadius="12dp"
-    app:neuElevation="8dp"
-    app:neuLightSource="topLeft" />
-```
+## المطور والمسؤول 👨‍💻
 
-### استخدام Java
+**عبيدة حسين (Obieda Hussien)**
+مستودع المشروع: [neumorphic-compose-pro](https://github.com/obieda-hussien/neumorphic-compose-pro)
 
-```java
-NeumorphicButton button = new NeumorphicButton(context);
-button.setNeuShapeType(NeuShapeType.PUNCHED);
-button.setNeuCornerRadius(dpToPx(12));
-button.setNeuElevation(dpToPx(8));
-```
+---
 
-## الأشكال
+## الرخصة 📜
 
-ثلاثة أشكال متاحة:
-
-| الشكل | الوصف |
-|-------|--------|
-| `Punched` | تأثير بارز/مرتفع |
-| `Pressed` | تأثير مضغوط/غائر |
-| `Pot` | مزيج من البارز والغائر |
-
-## خيارات التخصيص
-
-| المعامل | القيمة الافتراضية | الوصف |
-|---------|-------------------|--------|
-| `neuShape` | `Punched.Rounded(12.dp)` | نوع الشكل |
-| `lightShadowColor` | `Color.White` | لون الظل الفاتح |
-| `darkShadowColor` | `Color.LightGray` | لون الظل الداكن |
-| `elevation` | `6.dp` | عمق الظل |
-| `lightSource` | `LightSource.TOP_LEFT` | اتجاه مصدر الإضاءة |
-
-## دعم الثيمات
-
-### استخدام ألوان الثيم
-
-```kotlin
-@Composable
-fun ThemedCard() {
-    val colorScheme = NeuTheme.colorScheme() // فاتح/داكن تلقائياً
-    
-    Card(
-        backgroundColor = colorScheme.backgroundColor,
-        modifier = Modifier.themedNeumorphic(colorScheme)
-    ) {
-        // المحتوى
-    }
-}
-```
-
-### ألوان Material You الديناميكية (أندرويد 12+)
-
-```kotlin
-@Composable
-fun DynamicThemedCard() {
-    val colorScheme = NeuTheme.dynamicColorScheme()
-    
-    Card(
-        backgroundColor = colorScheme.backgroundColor,
-        modifier = Modifier.themedNeumorphic(colorScheme)
-    ) {
-        // المحتوى
-    }
-}
-```
-
-## أفضل الممارسات
-
-1. **استخدم ألوان متطابقة**: يجب أن تكون ألوان الخلفية والظل متشابهة
-2. **تجنب الأبيض/الأسود النقي**: استخدم ألوان رمادية للحصول على ظلال واقعية
-3. **حافظ على اتساق مصدر الإضاءة**: اجعل مصدر الإضاءة ثابتاً في واجهتك
-4. **استخدم elevation مناسب**: 4-12dp يعمل بشكل أفضل لمعظم الحالات
-
-## المتطلبات
-
-- **الحد الأدنى للـ SDK**: 21 (أندرويد 5.0)
-- **الـ SDK المستهدف**: 34 (أندرويد 14)
-- **Compose**: 1.5.4+
-- **Kotlin**: 1.9.20+
-
-## الرخصة
-
-مرخص تحت Apache License, Version 2.0
-
-## المساهمة
-
-المساهمات مرحب بها! لا تتردد في تقديم issues و pull requests.
+مرخص تحت رخصة Apache License, Version 2.0.
 
 </div>
