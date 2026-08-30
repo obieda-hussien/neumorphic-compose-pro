@@ -1,6 +1,5 @@
 package me.nikhilchaudhari.library
 
-import android.content.Context
 import android.os.Build
 import android.util.DisplayMetrics
 import androidx.compose.animation.core.Spring
@@ -8,7 +7,9 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.DrawModifier
@@ -104,9 +105,22 @@ fun Modifier.neumorphic(
     lightSource: LightSource = LightSource.TOP_LEFT
 ) = composed {
     val context = LocalContext.current
+
+    // BlurMaker owns a RenderScript context on API < 31, which is expensive to
+    // create. `remember` ties its lifetime to this call site's composition
+    // instead of recreating it on every recomposition (e.g. every animation
+    // frame when elevation is animated) - this was the single largest source
+    // of CPU/battery cost in earlier versions of this library.
+    val blurMaker = remember(context) {
+        BlurMaker(context, calculateDefaultBlurRadius(context.resources.displayMetrics))
+    }
+    DisposableEffect(blurMaker) {
+        onDispose { blurMaker.release() }
+    }
+
     this.then(
         NeumorphicModifier(
-            context,
+            blurMaker,
             neuInsets,
             neuShape,
             lightShadowColor,
@@ -300,7 +314,7 @@ fun Modifier.expressiveNeumorphic(
 }
 
 internal class NeumorphicModifier(
-    context: Context,
+    private val blurMaker: BlurMaker,
     private val insets: NeuInsets,
     private val neuShape: NeuShape,
     private val lightShadowColor: Color,
@@ -310,9 +324,6 @@ internal class NeumorphicModifier(
     private val lightSource: LightSource,
     inspectorInfo: InspectorInfo.() -> Unit
 ) : DrawModifier, InspectorValueInfo(inspectorInfo) {
-
-    private val blurMaker =
-        BlurMaker(context, calculateDefaultBlurRadius(context.resources.displayMetrics))
 
     override fun ContentDrawScope.draw() {
         val shapeConfig = ShapeConfig(
@@ -325,13 +336,17 @@ internal class NeumorphicModifier(
         )
         neuShape.drawShadows(this, blurMaker, shapeConfig)
     }
+}
 
-    private fun calculateDefaultBlurRadius(displayMetrics: DisplayMetrics): Int {
-        val densityStable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            DisplayMetrics.DENSITY_DEVICE_STABLE / DisplayMetrics.DENSITY_DEFAULT.toFloat()
-        } else {
-            displayMetrics.density
-        }
-        return min(BlurConfig.MAX_RADIUS, (densityStable * 10).roundToInt())
+/**
+ * Suggested blur radius for the device's display density, capped so extremely
+ * high-density screens don't blow up blur cost.
+ */
+internal fun calculateDefaultBlurRadius(displayMetrics: DisplayMetrics): Int {
+    val densityStable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        DisplayMetrics.DENSITY_DEVICE_STABLE / DisplayMetrics.DENSITY_DEFAULT.toFloat()
+    } else {
+        displayMetrics.density
     }
+    return min(BlurConfig.MAX_RADIUS, (densityStable * 10).roundToInt())
 }

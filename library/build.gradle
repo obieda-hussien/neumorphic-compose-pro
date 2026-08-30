@@ -6,7 +6,7 @@ plugins {
 
 ext {
     PUBLISH_GROUP_ID = 'me.nikhilchaudhari'
-    PUBLISH_VERSION = '3.0.0'
+    PUBLISH_VERSION = '3.1.0'
     PUBLISH_ARTIFACT_ID = 'composeNeumorphism'
 }
 
@@ -19,8 +19,8 @@ android {
     defaultConfig {
         minSdk 24
         targetSdk 35
-        versionCode 3
-        versionName "3.0.0"
+        versionCode 4
+        versionName "3.1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"

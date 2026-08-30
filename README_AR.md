@@ -2,7 +2,9 @@
 
 # مكتبة Neumorphism UI لأندرويد
 
-مكتبة حديثة ومرنة لواجهة Neumorphism لأندرويد تدعم كل من **Jetpack Compose** و **Views/XML** التقليدية.
+مكتبة حديثة ومرنة لواجهة Neumorphism لأندرويد تدعم كل من **Jetpack Compose** و **Views/XML** التقليدية - وفي هذا الفرع (fork) تم تحسينها عشان ترسم نفس الظلال بمعالجة CPU/بطارية أقل بكتير من النسخة الأصلية، من غير أي فرق في الجودة البصرية.
+
+[![](https://jitpack.io/v/obieda-hussien/neumorphic-compose-pro.svg)](https://jitpack.io/#obieda-hussien/neumorphic-compose-pro)
 
 ## المميزات ✨
 
@@ -12,21 +14,37 @@
 - 🎭 **دعم Material You** - ألوان ديناميكية على أندرويد 12+
 - 💫 **دعم الأنيميشن** - تأثيرات ضغط سلسة
 - 🔆 **مصدر الإضاءة قابل للتخصيص** - أعلى اليسار، أعلى اليمين، أسفل اليسار، أسفل اليمين
-- 🛠 **تنفيذ حديث** - انتقال من RenderScript القديم إلى StackBlur
+- 🔋 **رسم موفّر للطاقة (v3.1.0)** - الظلال بقت متخزنة (cached) ومشتركة بدل ما تتحسب من الصفر كل فريم - التفاصيل في قسم [الأداء](#الأداء)
 
 ## التثبيت
+
+المكتبة منشورة عبر [JitPack](https://jitpack.io/#obieda-hussien/neumorphic-compose-pro).
+
+ضيف مستودع JitPack في `settings.gradle` بتاع المشروع:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
 
 ### مكتبة Jetpack Compose
 
 ```kotlin
-implementation("me.nikhilchaudhari:composeNeumorphism:2.0.0")
+implementation("com.github.obieda-hussien.neumorphic-compose-pro:library:3.1.0")
 ```
 
 ### مكتبة XML/Views
 
 ```kotlin
-implementation("me.nikhilchaudhari:neumorphismViews:2.0.0")
+implementation("com.github.obieda-hussien.neumorphic-compose-pro:library-views:2.1.0")
 ```
+
+> الـ API العام متغيرش نهائي - نفس الدوال ونفس الاستخدام، بس غيّر إحداثيات الاعتمادية (dependency coordinates) فوق وكل حاجة هتشتغل زي ما هي.
 
 ## البداية السريعة
 

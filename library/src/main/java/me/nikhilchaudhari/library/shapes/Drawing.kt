@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withTranslation
 import me.nikhilchaudhari.library.LightSource
 import me.nikhilchaudhari.library.internal.BlurMaker
+import me.nikhilchaudhari.library.internal.NeuShadowCache
 import kotlin.math.roundToInt
 
 
@@ -76,7 +77,19 @@ internal fun ContentDrawScope.drawOnForeground(
     val lightOffset = getLightShadowOffset(shapeConfig.lightSource, elevation)
     val darkOffset = getDarkShadowOffset(shapeConfig.lightSource, elevation)
 
-    generateShadowBitmap(
+    val cacheKey = NeuShadowCache.keyFor(
+        pass = "fg",
+        widthPx = size.width.toInt(),
+        heightPx = size.height.toInt(),
+        elevationPx = elevation,
+        strokeWidthPx = strokeWidth.toFloat(),
+        lightColor = shapeConfig.lightShadowColor,
+        darkColor = shapeConfig.darkShadowColor,
+        cornerDescriptor = cornerType.toString(),
+        lightSource = shapeConfig.lightSource.name
+    )
+
+    val bitmap = NeuShadowCache.get(cacheKey) ?: generateShadowBitmap(
         size.width.toInt(),
         size.height.toInt(),
         lightShadowDrawable,
@@ -85,7 +98,9 @@ internal fun ContentDrawScope.drawOnForeground(
         blurMaker,
         lightOffset,
         darkOffset
-    )?.asImageBitmap()?.let {
+    )?.also { NeuShadowCache.put(cacheKey, it) }
+
+    bitmap?.asImageBitmap()?.let {
         drawScope.drawImage(it)
     }
 }
@@ -146,13 +161,38 @@ internal fun ContentDrawScope.drawOnBackground(
         setNeuShape(cornerType, ShadowForm.Default, radius, shapeConfig.lightSource)
     }
 
+    val lightCacheKey = NeuShadowCache.keyFor(
+        pass = "bg-light",
+        widthPx = width,
+        heightPx = height,
+        elevationPx = elevation,
+        strokeWidthPx = 0f,
+        lightColor = shapeConfig.lightShadowColor,
+        darkColor = Color.Transparent,
+        cornerDescriptor = cornerType.toString(),
+        lightSource = shapeConfig.lightSource.name
+    )
+    val darkCacheKey = NeuShadowCache.keyFor(
+        pass = "bg-dark",
+        widthPx = width,
+        heightPx = height,
+        elevationPx = elevation,
+        strokeWidthPx = 0f,
+        lightColor = Color.Transparent,
+        darkColor = shapeConfig.darkShadowColor,
+        cornerDescriptor = cornerType.toString(),
+        lightSource = shapeConfig.lightSource.name
+    )
+
     val lightShadowBitmap =
-        lightShadowDrawable
+        (NeuShadowCache.get(lightCacheKey) ?: lightShadowDrawable
             .toBlurredBitmap(width, height, elevation, blurMaker)
+            ?.also { NeuShadowCache.put(lightCacheKey, it) })
             ?.asImageBitmap()
     val darkShadowBitmap =
-        darkShadowDrawable
+        (NeuShadowCache.get(darkCacheKey) ?: darkShadowDrawable
             .toBlurredBitmap(width, height, elevation, blurMaker)
+            ?.also { NeuShadowCache.put(darkCacheKey, it) })
             ?.asImageBitmap()
 
     // Calculate insets based on light source

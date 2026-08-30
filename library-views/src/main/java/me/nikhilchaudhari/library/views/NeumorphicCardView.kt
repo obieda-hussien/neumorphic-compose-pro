@@ -445,6 +445,9 @@ class NeumorphicCardView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         invalidateShadowBitmaps()
+        // Release the RenderScript context (API < 31) held by this view's BlurMaker
+        // now that the view is leaving the window - no need to keep it alive.
+        blurMaker?.release()
     }
 
     fun refresh() {

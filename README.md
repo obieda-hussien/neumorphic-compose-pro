@@ -1,8 +1,8 @@
 # Neumorphism UI Library for Android
 
-A modern, flexible Neumorphism UI library for Android supporting both **Jetpack Compose** and traditional **XML/Java Android Views**.
+A modern, flexible Neumorphism UI library for Android supporting both **Jetpack Compose** and traditional **XML/Java Android Views** - optimized in this fork to render shadows with far less CPU/battery cost than the upstream implementation, with no change to visual quality.
 
-[![](https://img.shields.io/badge/mavencentral-2.0.0-brightgreen)]() ![List of Awesome List Badge](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg) [![Awesome Kotlin Badge](https://kotlin.link/awesome-kotlin.svg)](https://github.com/KotlinBy/awesome-kotlin)
+[![](https://jitpack.io/v/obieda-hussien/neumorphic-compose-pro.svg)](https://jitpack.io/#obieda-hussien/neumorphic-compose-pro) ![List of Awesome List Badge](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg) [![Awesome Kotlin Badge](https://kotlin.link/awesome-kotlin.svg)](https://github.com/KotlinBy/awesome-kotlin)
 
 <p align="center">
 <img src="https://github.com/CuriousNikhil/neumorphic-compose/blob/main/static/complete_screen.png?raw=true" height=400>
@@ -16,23 +16,37 @@ A modern, flexible Neumorphism UI library for Android supporting both **Jetpack 
 - 🎭 **Material You Integration** - Dynamic colors on Android 12+
 - 💫 **Animation Support** - Smooth press animations
 - 🔆 **Configurable Light Source** - TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
-- 🛠 **Modern Implementation** - Migrated from deprecated RenderScript to StackBlur
+- 🔋 **Low-power rendering (v3.1.0)** - shadow bitmaps are cached and shared instead of being regenerated on every frame; see [Performance](#performance)
 
 ## Installation
 
-### Jetpack Compose Library
+This fork is published via [JitPack](https://jitpack.io/#obieda-hussien/neumorphic-compose-pro).
 
-Add to your app level `build.gradle`:
+Add JitPack to your **project-level** `settings.gradle` (or `build.gradle` for older projects):
 
 ```kotlin
-implementation("me.nikhilchaudhari:composeNeumorphism:2.0.0")
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
+
+### Jetpack Compose Library
+
+```kotlin
+implementation("com.github.obieda-hussien.neumorphic-compose-pro:library:3.1.0")
 ```
 
 ### XML/Views Library
 
 ```kotlin
-implementation("me.nikhilchaudhari:neumorphismViews:2.0.0")
+implementation("com.github.obieda-hussien.neumorphic-compose-pro:library-views:2.1.0")
 ```
+
+> Coming from the upstream `me.nikhilchaudhari:composeNeumorphism` artifact? The public API is unchanged - swap the dependency coordinates above and everything else keeps working as-is.
 
 ## Quick Start
 
@@ -247,6 +261,53 @@ val darker = color.darken(0.2f)
 3. **Consider light source**: Keep light source consistent across your UI
 4. **Use appropriate elevation**: 4-12dp works best for most cases
 5. **Clip for Pressed shape**: Use `Modifier.clip()` when using `Pressed` shape
+
+## Performance
+
+Neumorphism is expensive by nature - every soft shadow is a blurred bitmap, and
+the upstream implementation regenerated that bitmap **from scratch on every
+single draw call**, including every frame of a press animation. This fork
+(`3.1.0` / `2.1.0`) keeps the exact same visual output but changes *how often*
+and *how expensively* that work happens.
+
+### What was actually draining the battery
+
+1. **A new `RenderScript` context was created on every recomposition.** The
+   modifier that owns the blur pipeline was rebuilt every time an animated
+   property (like elevation during a press) changed - so on API < 31, a brand
+   new `RenderScript` context (one of the heaviest objects on Android) was spun
+   up and torn down up to 60 times per second, per neumorphic component.
+2. **No caching at all.** Two identical cards in a `LazyColumn`, or a button
+   returning to the same resting elevation after a press, each regenerated
+   their own `GradientDrawable` + `Bitmap` + full-resolution CPU blur, even
+   though the output was pixel-for-pixel identical.
+3. **Blur ran at full bitmap resolution**, even though a Gaussian/stack blur
+   inherently destroys fine detail - so all that extra resolution was being
+   thrown away by the algorithm itself.
+
+### What changed
+
+| Fix | Effect |
+|---|---|
+| `BlurMaker` (and its `RenderScript` context) is now `remember`-ed once per component instead of recreated every recomposition | Removes the biggest single cost - no more per-frame `RenderScript.create()` |
+| Persistent `ScriptIntrinsicBlur` reused across calls | Cuts remaining RenderScript-path overhead further |
+| Process-wide LRU shadow-bitmap cache (`NeuShadowCache`), keyed by size/elevation/colors/shape/light source | Identical components (list items, buttons at rest) share one bitmap instead of each generating their own |
+| Elevation/stroke quantized to 0.5dp buckets for cache keys | A ~200-frame spring animation collapses into a handful of reusable shadow bitmaps instead of 200 unique ones - imperceptible visually |
+| Blur now runs on a 2x-downsampled bitmap, then upscales | ~4x fewer pixels touched by the CPU blur loop, with no visible quality loss since blur already discards that detail |
+| `BlurMaker.release()` hooked into `DisposableEffect` (Compose) / `onDetachedFromWindow` (Views) | The RenderScript context is freed when the component actually leaves the screen, instead of leaking |
+
+None of this changes the public API - `neumorphic()`, `animatedNeumorphic()`,
+`springNeumorphic()`, `expressiveNeumorphic()`, and the XML views all work
+exactly as before.
+
+### Roadmap
+
+- Investigate `RenderEffect`-based GPU compositor blur on API 31+ as a
+  zero-CPU-cost alternative to the downsampled StackBlur path (higher
+  implementation risk - needs on-device verification before shipping).
+- Optional `NeuPerformanceConfig` to let apps tune the shadow cache budget and
+  downsampling factor per use case (e.g. disable downsampling for very large
+  elevated surfaces where the softness difference could be visible).
 
 ## Migration from v1.x
 
