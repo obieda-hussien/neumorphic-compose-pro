@@ -111,6 +111,11 @@ open class NeumorphicView @JvmOverloads constructor(
     // Internal blur maker
     private var blurMaker: BlurMaker? = null
 
+    /** Test-only accessor - exposes the shared BlurMaker so tests can
+     *  verify it's the same instance across all neumorphic Views. */
+    @androidx.annotation.VisibleForTesting
+    fun blurMakerForTest(): BlurMaker? = blurMaker
+
     // Cached bitmaps for performance
     private var lightShadowBitmap: Bitmap? = null
     private var darkShadowBitmap: Bitmap? = null
