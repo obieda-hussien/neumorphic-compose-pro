@@ -284,21 +284,66 @@ and *how expensively* that work happens.
 3. **Blur ran at full bitmap resolution**, even though a Gaussian/stack blur
    inherently destroys fine detail - so all that extra resolution was being
    thrown away by the algorithm itself.
+4. **Every neumorphic component owned its own `RenderScript` context.** A
+   typical screen (header, search bar, a row of quick actions, a couple of
+   cards, some switches) easily has 15-20+ neumorphic components. Even with
+   fix #1 in place, that's still 15-20+ separate `RenderScript` contexts all
+   being created synchronously during the very first frame - which is heavy
+   enough on the main thread to show up as the app freezing/hanging for a
+   moment on launch.
 
 ### What changed
 
 | Fix | Effect |
 |---|---|
-| `BlurMaker` (and its `RenderScript` context) is now `remember`-ed once per component instead of recreated every recomposition | Removes the biggest single cost - no more per-frame `RenderScript.create()` |
+| `BlurMaker` (and its `RenderScript` context) is now a single app-wide singleton (`NeuBlurMakerHolder`) shared by every `neumorphic()` call and every XML view | At most **one** `RenderScript` context is ever created for the app's entire lifetime, no matter how many neumorphic components exist - this is what fixes the launch freeze |
 | Persistent `ScriptIntrinsicBlur` reused across calls | Cuts remaining RenderScript-path overhead further |
 | Process-wide LRU shadow-bitmap cache (`NeuShadowCache`), keyed by size/elevation/colors/shape/light source | Identical components (list items, buttons at rest) share one bitmap instead of each generating their own |
 | Elevation/stroke quantized to 0.5dp buckets for cache keys | A ~200-frame spring animation collapses into a handful of reusable shadow bitmaps instead of 200 unique ones - imperceptible visually |
 | Blur now runs on a 2x-downsampled bitmap, then upscales | ~4x fewer pixels touched by the CPU blur loop, with no visible quality loss since blur already discards that detail |
-| `BlurMaker.release()` hooked into `DisposableEffect` (Compose) / `onDetachedFromWindow` (Views) | The RenderScript context is freed when the component actually leaves the screen, instead of leaking |
 
 None of this changes the public API - `neumorphic()`, `animatedNeumorphic()`,
 `springNeumorphic()`, `expressiveNeumorphic()`, and the XML views all work
 exactly as before.
+
+### Optional: warm up before the first frame
+
+The shared `RenderScript` context is still created lazily on first use - by
+default that's the first frame that draws a neumorphic component. For an
+app whose very first screen is heavy with neumorphic components, you can
+shave that off entirely by warming it up on a background thread before the
+UI needs it:
+
+```kotlin
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        // Off the main thread - creates the shared RenderScript context
+        // ahead of time so the first neumorphic frame never has to wait for it.
+        Thread { NeuBlurMakerHolder.warmUp(this) }.start()
+    }
+}
+```
+
+This is a pure optimization - safe to skip, call multiple times, or call
+from anywhere; the singleton only does the expensive work once.
+
+### Demo app: smaller, correct APK
+
+The `app` module (the demo/sample app in this repo, not the library itself)
+also had some unrelated issues that made it bigger and slower to install
+than it needed to be:
+
+- Removed `material-icons-extended` (~5000 icons, several MB) - the demo
+  only uses about 10 common icons, all of which live in the much smaller
+  `material-icons-core`.
+- Removed `navigation-compose` and the three `material3-adaptive` artifacts -
+  none of them were used anywhere in the demo's source.
+- Enabled `minifyEnabled` + `shrinkResources` for the release build type
+  (previously `minifyEnabled false`, so the release APK shipped completely
+  unshrunk).
+- Fixed a dead conditional in the header's notification icon that picked the
+  same icon in both the on/off branches regardless of state.
 
 ### Roadmap
 
