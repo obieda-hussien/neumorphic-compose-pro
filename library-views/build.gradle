@@ -13,11 +13,16 @@ apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
 
 android {
     namespace 'me.nikhilchaudhari.library.views'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
-        minSdk 21
-        targetSdk 34
+        // Must be >= :library's minSdk (24) since this module depends on it -
+        // a lower value here fails the manifest merge ("uses-sdk:minSdkVersion
+        // X cannot be smaller than version 24 declared in library manifest").
+        // This module was previously pinned to minSdk 21 despite already
+        // depending on :library, which was a latent bug.
+        minSdk 24
+        targetSdk 35
         versionCode 3
         versionName "2.1.0"
 
@@ -43,11 +48,17 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.core:core-ktx:1.15.0'
-    implementation 'androidx.appcompat:appcompat:1.8.0'
-    implementation 'com.google.android.material:material:1.14.0'
-    implementation project(path: ':library')
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.material
+
+    // `api`, not `implementation`: NeumorphicView/Button/CardView expose
+    // `me.nikhilchaudhari.library.LightSource` directly in their public
+    // properties (e.g. `var neuLightSource: LightSource`), so consumers of
+    // this module need :library's types resolvable transitively.
+    api project(path: ':library')
+
+    testImplementation libs.junit
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.androidx.test.espresso.core
 }

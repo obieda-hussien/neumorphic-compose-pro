@@ -42,52 +42,52 @@ android {
 
 dependencies {
     // Compose BOM for version management
-    implementation platform("androidx.compose:compose-bom:$compose_bom_version")
-    androidTestImplementation platform("androidx.compose:compose-bom:$compose_bom_version")
-    
-    implementation 'androidx.core:core-ktx:1.15.0'
-    implementation 'androidx.appcompat:appcompat:1.8.0'
-    implementation 'com.google.android.material:material:1.14.0'
-    
+    implementation platform(libs.compose.bom)
+    androidTestImplementation platform(libs.compose.bom)
+
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.material
+
     // Compose UI
-    implementation "androidx.compose.ui:ui"
-    implementation "androidx.compose.ui:ui-graphics"
-    implementation "androidx.compose.ui:ui-tooling-preview"
-    implementation "androidx.compose.foundation:foundation"
-    
+    implementation libs.androidx.compose.ui
+    implementation libs.androidx.compose.ui.graphics
+    implementation libs.androidx.compose.ui.tooling.preview
+    implementation libs.androidx.compose.foundation
+
     // Material Design 3 - Expressive with latest features
-    implementation "androidx.compose.material3:material3:$material3_version"
+    implementation libs.androidx.compose.material3
 
     // Animation - including spring physics and shared element
-    implementation "androidx.compose.animation:animation"
-    implementation "androidx.compose.animation:animation-core"
-    implementation "androidx.compose.animation:animation-graphics"
+    implementation libs.androidx.compose.animation
+    implementation libs.androidx.compose.animation.core
+    implementation libs.androidx.compose.animation.graphics
 
     // Material icons - core set only. The demo only uses ~10 common icons
     // (Add, Check, Favorite, Home, Notifications, Person, Search, Settings,
     // FavoriteBorder), all of which live in material-icons-core.
     // material-icons-extended ships 5000+ icons and was previously pulled in
     // unused - it alone adds several MB to a debug/unshrunk APK.
-    implementation "androidx.compose.material:material-icons-core"
-    
+    implementation libs.androidx.compose.material.icons.core
+
     // Lifecycle
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.11.0'
-    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.11.0'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0'
-    
+    implementation libs.androidx.lifecycle.runtime.ktx
+    implementation libs.androidx.lifecycle.runtime.compose
+    implementation libs.androidx.lifecycle.viewmodel.compose
+
     // Activity Compose
-    implementation 'androidx.activity:activity-compose:1.12.3'
-    
+    implementation libs.androidx.activity.compose
+
     // Library module
     implementation project(path: ':library')
-    
+
     // Testing
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
-    androidTestImplementation "androidx.compose.ui:ui-test-junit4"
-    
+    testImplementation libs.junit
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.androidx.test.espresso.core
+    androidTestImplementation libs.androidx.compose.ui.test.junit4
+
     // Debug tooling
-    debugImplementation "androidx.compose.ui:ui-tooling"
-    debugImplementation "androidx.compose.ui:ui-test-manifest"
+    debugImplementation libs.androidx.compose.ui.tooling
+    debugImplementation libs.androidx.compose.ui.test.manifest
 }

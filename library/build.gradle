@@ -61,37 +61,48 @@ android {
 }
 
 dependencies {
-    // Compose BOM for version management
-    implementation platform("androidx.compose:compose-bom:$compose_bom_version")
+    // Compose BOM - `api` so this version alignment propagates to consumers
+    // of the published AAR too, not just within this module.
+    api platform(libs.compose.bom)
 
-    implementation 'androidx.core:core-ktx:1.15.0'
-    implementation 'androidx.appcompat:appcompat:1.8.0'
-    implementation 'com.google.android.material:material:1.14.0'
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.material
 
     // Installs this library's bundled baseline-prof.txt on the consuming
     // app's device so ART can compile/verify the hot classes ahead of time
     // instead of interpreting them on first use. See src/main/baseline-prof.txt.
-    implementation 'androidx.profileinstaller:profileinstaller:1.4.1'
-    
-    // Compose UI
-    implementation "androidx.compose.ui:ui"
-    implementation "androidx.compose.ui:ui-graphics"
-    implementation "androidx.compose.ui:ui-tooling-preview"
-    implementation "androidx.compose.foundation:foundation"
-    
-    // Material Design 3 - Expressive with latest features
-    implementation "androidx.compose.material3:material3:$material3_version"
-    
-    // Animation - including spring physics
-    implementation "androidx.compose.animation:animation"
-    implementation "androidx.compose.animation:animation-core"
-    implementation "androidx.compose.animation:animation-graphics"
-    
+    implementation libs.androidx.profileinstaller
+
+    // Compose UI - `api`, not `implementation`: this library's own public
+    // functions return `Modifier` and take `Color`/`Dp` parameters
+    // (Neumorphic.kt), so consumers need these types resolvable from just
+    // depending on this library. `implementation` would compile fine here
+    // but leave external JitPack consumers with "unresolved reference"
+    // errors unless they *also* separately declared compose-ui themselves.
+    api libs.androidx.compose.ui
+    api libs.androidx.compose.ui.graphics
+    implementation libs.androidx.compose.ui.tooling.preview
+    implementation libs.androidx.compose.foundation
+
+    // Material Design 3 - `api` for the same reason as compose-ui:
+    // NeuTheme.fromMaterial3ColorScheme(colorScheme: ColorScheme = ...) puts
+    // androidx.compose.material3.ColorScheme directly in this library's
+    // public API surface.
+    api libs.androidx.compose.material3
+
+    // Animation - internal use only (springNeumorphic/animatedNeumorphic take
+    // plain Float/Int/the library's own NeuAnimationType enum, never expose
+    // androidx.compose.animation types directly), so implementation is correct.
+    implementation libs.androidx.compose.animation
+    implementation libs.androidx.compose.animation.core
+    implementation libs.androidx.compose.animation.graphics
+
     // Testing
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
-    
+    testImplementation libs.junit
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.androidx.test.espresso.core
+
     // Debug tooling
-    debugImplementation "androidx.compose.ui:ui-tooling"
+    debugImplementation libs.androidx.compose.ui.tooling
 }

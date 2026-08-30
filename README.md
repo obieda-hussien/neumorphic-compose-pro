@@ -391,9 +391,12 @@ against the demo app, and merge the relevant lines into the bundled file.
 - Investigate `RenderEffect`-based GPU compositor blur on API 31+ as a
   zero-CPU-cost alternative to the downsampled StackBlur path (higher
   implementation risk - needs on-device verification before shipping).
-- Optional `NeuPerformanceConfig` to let apps tune the shadow cache budget and
-  downsampling factor per use case (e.g. disable downsampling for very large
-  elevated surfaces where the softness difference could be visible).
+- Generate a real Macrobenchmark-based baseline profile (the current one is
+  hand-authored and class-level-only, see [Baseline profiles](#baseline-profiles) above) once a
+  device/emulator is available to run it against the demo app.
+- Extend `NeuPerformanceConfig` further if real-world usage shows a need
+  (e.g. per-shape overrides, disabling downsampling for very large elevated
+  surfaces where the softness difference could be visible).
 
 ## Migration from v1.x
 
@@ -414,10 +417,12 @@ Modifier.neumorphic(
 
 ## Requirements
 
-- **Minimum SDK**: 21 (Android 5.0)
-- **Target SDK**: 34 (Android 14)
-- **Compose**: 1.5.4+
-- **Kotlin**: 1.9.20+
+- **Minimum SDK**: 24 (Android 7.0) for both `library` (Compose) and `library-views` (XML/Views)
+- **Compile/Target SDK**: 35 (Android 15)
+- **Compose BOM**: 2026.08.00
+- **Kotlin**: 2.3.0
+- **AGP**: 8.13.0 (build-time requirement for contributors; does not constrain consumers)
+- **Java**: 17 source/target compatibility
 
 ## License
 

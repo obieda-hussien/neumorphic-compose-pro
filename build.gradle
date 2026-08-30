@@ -1,18 +1,22 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
     ext {
-        // Kotlin 2.3.0 - AGP 8.13.x explicitly documents Kotlin 2.3 support via R8 8.13.19
+        // NOTE: buildscript{} classpath resolution runs before the module-level
+        // version catalog (gradle/libs.versions.toml) is reliably usable at this
+        // scope in all Gradle versions, so these two are kept as plain literals
+        // rather than catalog references. Keep them in sync with the
+        // `agp`/`kotlin` entries in gradle/libs.versions.toml - that file is
+        // still the single source of truth for every other dependency version
+        // in this project (used from all four module build.gradle files).
+        agp_version = '8.13.0'
         kotlin_version = '2.3.0'
-        // Material 3 Expressive - latest alpha with Expressive components
-        material3_version = '1.5.0-alpha26'
-        compose_bom_version = '2026.08.00'
     }
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:8.13.0"
+        classpath "com.android.tools.build:gradle:$agp_version"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
 
         // NOTE: Do not place your application dependencies here; they belong
