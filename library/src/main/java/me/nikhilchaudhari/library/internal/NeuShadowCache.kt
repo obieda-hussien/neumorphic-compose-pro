@@ -21,9 +21,10 @@ import kotlin.math.roundToInt
  */
 internal object NeuShadowCache {
 
-    private const val CACHE_BUDGET_KB = 6 * 1024 // ~6MB, generous for a handful of unique shadows
-
-    private val cache = object : LruCache<String, Bitmap>(CACHE_BUDGET_KB) {
+    // Mutable so NeuPerformanceConfig.shadowCacheBudgetKB can resize it at
+    // runtime. LruCache.resize() (from android.util) already handles trimming
+    // down to the new budget if it shrinks, so no manual eviction needed here.
+    private val cache = object : LruCache<String, Bitmap>(6 * 1024) { // ~6MB default
         override fun sizeOf(key: String, value: Bitmap): Int =
             (value.byteCount / 1024).coerceAtLeast(1)
     }
@@ -44,6 +45,16 @@ internal object NeuShadowCache {
 
     /** Drops all cached bitmaps, e.g. in response to a system low-memory callback. */
     fun clear() = cache.evictAll()
+
+    /**
+     * Resizes the cache budget (in KB). Called by [me.nikhilchaudhari.library.NeuPerformanceConfig]
+     * when the app changes `shadowCacheBudgetKB`. Existing entries are kept as
+     * long as they still fit; if the new budget is smaller, the least-recently-used
+     * entries are evicted immediately to bring the cache under budget.
+     */
+    fun resizeBudget(newBudgetKB: Int) {
+        cache.resize(newBudgetKB.coerceAtLeast(1))
+    }
 
     /**
      * Builds a stable cache key for a shadow bitmap.

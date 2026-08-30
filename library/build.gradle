@@ -45,6 +45,19 @@ android {
     buildFeatures {
         compose true
     }
+
+    testOptions {
+        unitTests {
+            // NeuPerformanceConfigTest exercises NeuShadowCache.resizeBudget(),
+            // which calls android.util.LruCache.resize() - a real Android
+            // framework method that the default unit-test android.jar stubs
+            // out (throws "not mocked"). returnDefaultValues makes such calls
+            // no-op/return-default instead of throwing, which is enough here
+            // since these tests only assert on NeuPerformanceConfig's own
+            // pure-Kotlin state, not on LruCache's internal behavior.
+            returnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -54,6 +67,11 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'androidx.appcompat:appcompat:1.8.0'
     implementation 'com.google.android.material:material:1.14.0'
+
+    // Installs this library's bundled baseline-prof.txt on the consuming
+    // app's device so ART can compile/verify the hot classes ahead of time
+    // instead of interpreting them on first use. See src/main/baseline-prof.txt.
+    implementation 'androidx.profileinstaller:profileinstaller:1.4.1'
     
     // Compose UI
     implementation "androidx.compose.ui:ui"

@@ -197,6 +197,28 @@ class MyApplication : Application() {
 - فعّلت `minifyEnabled` + `shrinkResources` لنسخة الـ release (كانت متعطلة تمامًا قبل كده).
 - صلّحت شرط ميت في أيقونة الإشعارات في الهيدر كان بيرجع نفس الأيقونة في الحالتين.
 
+### ضبط تكلفة الكاش/البلور عن طريق `NeuPerformanceConfig`
+
+القيم الافتراضية (downsampling ÷2، كاش 6MB) مناسبة لمعظم الحالات. لو تطبيقك مستهدف أجهزة ضعيفة، أو عنده عدد كبير من الأشكال النيومورفيزم *المختلفة* في نفس الوقت:
+
+```kotlin
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        NeuPerformanceConfig.blurDownsampling = 3        // أجهزة ضعيفة: CPU أقل، ظل أنعم شوية
+        NeuPerformanceConfig.shadowCacheBudgetKB = 12 * 1024  // واجهة كبيرة/متنوعة: تفريغ كاش أقل
+    }
+}
+```
+
+اضبطها مرة واحدة بدري قبل أي رسم لكومبوننت نيومورفيزم. آمن تغيّرها بعدين كمان — التغيير بيأثر بس على الظلال اللي هتتولّد بعد كده.
+
+### Baseline Profiles
+
+المكتبة بتشحن ملف `baseline-prof.txt` (في `library/src/main/`) فيه أهم الكلاسات اللي بتشتغل باستمرار (البلور، الكاش، الأشكال). Gradle بيدمجه تلقائيًا في أي تطبيق بيستخدم المكتبة — من غير أي إعداد إضافي منك.
+
+بصراحة: ده ملف مكتوب يدويًا على مستوى الكلاس بس (مش method-level)، مش متولّد من قياس فعلي على جهاز — لأن دوال الـ Compose composable زي `neumorphic()` بيتولدلها أسماء داخلية معقدة (mangled) صعب تخمينها صح من غير أدوات فعلية. لو عايز بروفايل أدق، تقدر تولّده من جهاز حقيقي عن طريق [Macrobenchmark + Baseline Profile Gradle plugin](https://developer.android.com/topic/performance/baselineprofiles/create-baselineprofile).
+
 ## أفضل الممارسات
 
 1. **استخدم ألوان متطابقة**: يجب أن تكون ألوان الخلفية والظل متشابهة

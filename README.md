@@ -345,6 +345,47 @@ than it needed to be:
 - Fixed a dead conditional in the header's notification icon that picked the
   same icon in both the on/off branches regardless of state.
 
+### Tuning the cache/blur cost with `NeuPerformanceConfig`
+
+The defaults (2x downsampling, 6MB shadow cache) are chosen to be safe for
+typical UI. If your app targets low-end devices, or has an unusually large
+number of *distinct* neumorphic shapes on screen (so the shared cache gets
+little reuse), you can tune these:
+
+```kotlin
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        NeuPerformanceConfig.blurDownsampling = 3        // lower-end devices: less CPU, slightly softer shadows
+        NeuPerformanceConfig.shadowCacheBudgetKB = 12 * 1024  // large/varied UI: fewer cache evictions
+    }
+}
+```
+
+Set these once, early, before any neumorphic composable draws. They're safe
+to change later too - a change only affects shadows generated *after* it, it
+doesn't retroactively re-render what's already on screen.
+
+### Baseline profiles
+
+This library ships a bundled `baseline-prof.txt` (in `library/src/main/`)
+listing its always-hot internal classes (the blur pipeline, the shadow
+cache, the shape hierarchy). AGP automatically merges this into any
+consuming app's own baseline profile at build time - no setup needed on your
+end beyond depending on the library normally.
+
+To be transparent about what this is: it's a hand-authored, class-level-only
+profile, not one generated from an actual device run. It tells ART "expect
+these classes early, preload/verify them ahead of time" - a real but modest
+win. It deliberately does not include method-level rules for the
+`neumorphic()`/`animatedNeumorphic()`/`springNeumorphic()` composable
+functions, since Compose's compiler generates synthetic default-argument and
+mangled internal names for those that are impractical to guess correctly by
+hand. For a more complete profile (including those hot composable entry
+points), generate one from a real device using the
+[Macrobenchmark + Baseline Profile Gradle plugin](https://developer.android.com/topic/performance/baselineprofiles/create-baselineprofile)
+against the demo app, and merge the relevant lines into the bundled file.
+
 ### Roadmap
 
 - Investigate `RenderEffect`-based GPU compositor blur on API 31+ as a

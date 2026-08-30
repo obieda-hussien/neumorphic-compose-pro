@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withTranslation
 import me.nikhilchaudhari.library.LightSource
+import me.nikhilchaudhari.library.NeuPerformanceConfig
 import me.nikhilchaudhari.library.internal.BlurMaker
 import me.nikhilchaudhari.library.internal.NeuShadowCache
 import kotlin.math.roundToInt
@@ -246,11 +247,14 @@ internal fun Bitmap.blurred(
     blurMaker: BlurMaker,
     block: Canvas.() -> Unit
 ): Bitmap? {
-    return blurMaker.blur(this.also {
-        Canvas(this).run {
-            block()
-        }
-    })
+    return blurMaker.blur(
+        this.also {
+            Canvas(this).run {
+                block()
+            }
+        },
+        sampling = NeuPerformanceConfig.blurDownsampling
+    )
 }
 
 internal sealed class ShadowForm {
