@@ -9,6 +9,7 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import me.nikhilchaudhari.library.LightSource
 import me.nikhilchaudhari.library.internal.BlurMaker
+import me.nikhilchaudhari.library.internal.NeuBlurMakerHolder
 import me.nikhilchaudhari.library.internal.stackBlur
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -124,7 +125,7 @@ open class NeumorphicView @JvmOverloads constructor(
 
     init {
         // Initialize blur maker
-        blurMaker = BlurMaker(context, calculateDefaultBlurRadius())
+        blurMaker = NeuBlurMakerHolder.get(context)
         
         // Parse XML attributes
         attrs?.let {
@@ -423,9 +424,9 @@ open class NeumorphicView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         invalidateShadowBitmaps()
-        // Release the RenderScript context (API < 31) held by this view's BlurMaker
-        // now that the view is leaving the window - no need to keep it alive.
-        blurMaker?.release()
+        // Note: blurMaker is intentionally NOT released here - it is a shared,
+        // app-wide instance (see NeuBlurMakerHolder), and other neumorphic
+        // views/composables elsewhere on screen may still be using it.
     }
 
     /**

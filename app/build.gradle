@@ -23,7 +23,8 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -56,17 +57,18 @@ dependencies {
     
     // Material Design 3 - Expressive with latest features
     implementation "androidx.compose.material3:material3:$material3_version"
-    implementation "androidx.compose.material3.adaptive:adaptive:$material3_adaptive_version"
-    implementation "androidx.compose.material3.adaptive:adaptive-layout:$material3_adaptive_version"
-    implementation "androidx.compose.material3.adaptive:adaptive-navigation:$material3_adaptive_version"
-    
+
     // Animation - including spring physics and shared element
     implementation "androidx.compose.animation:animation"
     implementation "androidx.compose.animation:animation-core"
     implementation "androidx.compose.animation:animation-graphics"
-    
-    // Material icons extended
-    implementation "androidx.compose.material:material-icons-extended"
+
+    // Material icons - core set only. The demo only uses ~10 common icons
+    // (Add, Check, Favorite, Home, Notifications, Person, Search, Settings,
+    // FavoriteBorder), all of which live in material-icons-core.
+    // material-icons-extended ships 5000+ icons and was previously pulled in
+    // unused - it alone adds several MB to a debug/unshrunk APK.
+    implementation "androidx.compose.material:material-icons-core"
     
     // Lifecycle
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
@@ -75,9 +77,6 @@ dependencies {
     
     // Activity Compose
     implementation 'androidx.activity:activity-compose:1.9.3'
-    
-    // Navigation
-    implementation 'androidx.navigation:navigation-compose:2.8.5'
     
     // Library module
     implementation project(path: ':library')

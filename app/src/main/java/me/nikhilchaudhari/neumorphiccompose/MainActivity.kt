@@ -196,7 +196,7 @@ private fun HeaderSection(colorScheme: NeuTheme.NeuColorScheme) {
             size = 52.dp
         ) {
             Icon(
-                imageVector = if (notificationEnabled) Icons.Filled.Notifications else Icons.Filled.Notifications,
+                imageVector = Icons.Filled.Notifications,
                 contentDescription = "Notifications",
                 tint = if (notificationEnabled) colorScheme.accentColor else colorScheme.onBackgroundColor
             )

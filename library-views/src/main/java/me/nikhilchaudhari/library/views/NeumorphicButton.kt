@@ -9,6 +9,7 @@ import androidx.appcompat.widget.AppCompatButton
 import me.nikhilchaudhari.library.LightSource
 import me.nikhilchaudhari.library.NeuConstants
 import me.nikhilchaudhari.library.internal.BlurMaker
+import me.nikhilchaudhari.library.internal.NeuBlurMakerHolder
 import me.nikhilchaudhari.library.internal.stackBlur
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -130,7 +131,7 @@ class NeumorphicButton @JvmOverloads constructor(
     }
 
     init {
-        blurMaker = BlurMaker(context, calculateDefaultBlurRadius())
+        blurMaker = NeuBlurMakerHolder.get(context)
 
         // Parse XML attributes
         attrs?.let {
@@ -440,9 +441,9 @@ class NeumorphicButton @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         invalidateShadowBitmaps()
-        // Release the RenderScript context (API < 31) held by this view's BlurMaker
-        // now that the view is leaving the window - no need to keep it alive.
-        blurMaker?.release()
+        // Note: blurMaker is intentionally NOT released here - it is a shared,
+        // app-wide instance (see NeuBlurMakerHolder), and other neumorphic
+        // views/composables elsewhere on screen may still be using it.
     }
 
     fun refresh() {

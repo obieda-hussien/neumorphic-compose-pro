@@ -181,3 +181,53 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             BlurConfig.MAX_RADIUS.coerceAtMost((densityScale * 10).roundToInt())
     }
 }
+
+/**
+ * App-wide shared [BlurMaker].
+ *
+ * ## Why this exists
+ * A screen with N neumorphic components used to mean N separate [BlurMaker]
+ * instances, each lazily owning its own `RenderScript` context on API < 31.
+ * `RenderScript.create()` is heavy - creating 15-20+ of them in a single first
+ * frame (a realistic count for a screen with several cards/buttons/switches)
+ * is enough to visibly freeze app startup, since Compose's first frame must
+ * finish drawing on the main thread before anything is shown.
+ *
+ * Sharing a single [BlurMaker] (and therefore a single `RenderScript` context)
+ * across the whole app means that context is created **at most once** for the
+ * app's entire lifetime, no matter how many neumorphic components exist.
+ */
+object NeuBlurMakerHolder {
+
+    @Volatile
+    private var instance: BlurMaker? = null
+
+    fun get(context: Context): BlurMaker {
+        return instance ?: synchronized(this) {
+            instance ?: BlurMaker(
+                context,
+                calculateDefaultBlurRadius(context.resources.displayMetrics)
+            ).also { instance = it }
+        }
+    }
+
+    private fun calculateDefaultBlurRadius(displayMetrics: DisplayMetrics): Int {
+        val densityStable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            DisplayMetrics.DENSITY_DEVICE_STABLE / DisplayMetrics.DENSITY_DEFAULT.toFloat()
+        } else {
+            displayMetrics.density
+        }
+        return BlurMaker.radiusForDensity(densityStable)
+    }
+
+    /**
+     * Optional: call this once, early, off the main thread (e.g. from a
+     * background coroutine in `Application.onCreate`) to pay the one-time
+     * `RenderScript` context creation cost before the first neumorphic
+     * composable needs it, so the first frame never has to wait for it.
+     * Safe to call multiple times or never - it's a pure optimization.
+     */
+    fun warmUp(context: Context) {
+        get(context)
+    }
+}
