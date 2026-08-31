@@ -16,7 +16,10 @@ composeBom = "2026.04.01"
 coreKtx = "1.15.0"
 appcompat = "1.8.0"
 material = "1.14.0"
-lifecycle = "2.11.0"
+# NOTE: lifecycle 2.11.0 (specifically since 2.11.0-beta01) also requires
+# compileSdk 37 - same root cause as the compose-bom/material3 issue above.
+# 2.10.0 is the last line before that.
+lifecycle = "2.10.0"
 activityCompose = "1.12.3"
 profileinstaller = "1.4.1"
 

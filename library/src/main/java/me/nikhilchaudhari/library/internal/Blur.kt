@@ -48,6 +48,12 @@ data class BlurConfig(
  * that owned it was rebuilt on every recomposition) was the single largest
  * source of CPU/battery drain in this library.
  */
+@Suppress("DEPRECATION") // RenderScript is deprecated (no direct replacement below
+// API 31) but is this class's intentional fallback path for API < 31, where
+// StackBlur alone would be slower; see the class doc below for the full
+// rationale. Suppressed at the class level so it covers the field
+// declarations, release(), and the blurWithRenderScript() call site uniformly
+// instead of scattering per-member suppressions.
 class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
 
     private val contextRef = WeakReference(context.applicationContext ?: context)
@@ -123,7 +129,6 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun blurWithRenderScript(bitmap: Bitmap, radius: Int): Bitmap? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return bitmap.stackBlur(radius)
