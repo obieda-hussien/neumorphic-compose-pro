@@ -13,7 +13,7 @@ apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
 
 android {
     namespace 'me.nikhilchaudhari.library.views'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         // Must be >= :library's minSdk (24) since this module depends on it -
@@ -22,7 +22,7 @@ android {
         // This module was previously pinned to minSdk 21 despite already
         // depending on :library, which was a latent bug.
         minSdk 24
-        targetSdk 35
+        targetSdk 36
         versionCode 3
         versionName "2.1.0"
 
@@ -35,6 +35,11 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    // See the identical block in library/build.gradle for why this is needed.
+    publishing {
+        singleVariant("release") {}
     }
 
     compileOptions {

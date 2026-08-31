@@ -4,8 +4,12 @@ agp = "8.13.0"
 kotlin = "2.3.0"
 
 # Compose
-composeBom = "2026.08.00"
-material3 = "1.5.0-alpha26"
+# NOTE: compose-bom 2026.08.00 (Compose 1.12.0) requires compileSdk 37 + AGP
+# 9.1.0+, which conflicts with this project staying on AGP 8.13.x (see the
+# "Configure AGP 9" discussion in README - deliberately deferred). 2026.04.01
+# is Compose 1.11, the last BOM line before that compileSdk 37 requirement,
+# confirmed compatible with compileSdk 35/36 + AGP 8.13 by actual CI.
+composeBom = "2026.04.01"
 
 # AndroidX - shared across library / library-views / app, so a version bump
 # here applies everywhere at once instead of drifting per-module.
@@ -41,7 +45,12 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+# No version.ref here - let the BOM (above) pin the material3 version that's
+# actually compatible with it, instead of an independently-pinned alpha that
+# can silently drift ahead of what the rest of the BOM supports (this is
+# exactly how it broke before: material3 1.5.0-alpha26 required compileSdk 37
+# on its own, independent of - and incompatible with - the BOM/AGP combo here).
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-compose-animation = { group = "androidx.compose.animation", name = "animation" }
 androidx-compose-animation-core = { group = "androidx.compose.animation", name = "animation-core" }
 androidx-compose-animation-graphics = { group = "androidx.compose.animation", name = "animation-graphics" }

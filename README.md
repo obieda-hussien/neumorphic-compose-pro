@@ -388,6 +388,10 @@ against the demo app, and merge the relevant lines into the bundled file.
 
 ### Roadmap
 
+- Migrate to AGP 9.1.0+ / Compose 1.12+ / `compileSdk 37` once AGP 9's
+  migration surface (it changes how the Kotlin Gradle plugin is applied) has
+  been verified against a real build - this project deliberately deferred
+  that jump for now (see [Requirements](#requirements) above).
 - Investigate `RenderEffect`-based GPU compositor blur on API 31+ as a
   zero-CPU-cost alternative to the downsampled StackBlur path (higher
   implementation risk - needs on-device verification before shipping).
@@ -418,11 +422,22 @@ Modifier.neumorphic(
 ## Requirements
 
 - **Minimum SDK**: 24 (Android 7.0) for both `library` (Compose) and `library-views` (XML/Views)
-- **Compile/Target SDK**: 35 (Android 15)
-- **Compose BOM**: 2026.08.00
+- **Compile/Target SDK**: 36 (the maximum recommended by AGP 8.13.0 - see note below)
+- **Compose BOM**: 2026.04.01 (Compose 1.11)
 - **Kotlin**: 2.3.0
 - **AGP**: 8.13.0 (build-time requirement for contributors; does not constrain consumers)
 - **Java**: 17 source/target compatibility
+
+> **Why not the newest Compose BOM?** Compose 1.12.0 (BOM 2026.08.00 and later)
+> requires `compileSdk 37`, which in turn requires AGP 9.1.0+. This project
+> deliberately stays on AGP 8.13.x for now (see [Roadmap](#roadmap)), so it's
+> pinned to Compose 1.11 (BOM `2026.04.01`), the last line before that jump -
+> confirmed compatible with `compileSdk 36` + AGP 8.13 by CI. `material3` is
+> no longer pinned to an independent alpha version either, for the same
+> reason: an independently-pinned material3 alpha silently requiring
+> `compileSdk 37` on its own (regardless of what the rest of the BOM needs)
+> is exactly what broke this before - letting the BOM manage `material3`'s
+> version keeps everything on one consistent, tested line.
 
 ## License
 

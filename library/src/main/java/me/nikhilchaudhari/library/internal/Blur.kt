@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.*
 import android.os.Build
 import android.renderscript.*
+import android.util.DisplayMetrics
 import java.lang.ref.WeakReference
 import kotlin.math.roundToInt
 

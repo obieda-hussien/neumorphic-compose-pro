@@ -14,11 +14,11 @@ apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
 
 android {
     namespace 'me.nikhilchaudhari.library'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         minSdk 24
-        targetSdk 35
+        targetSdk 36
         versionCode 4
         versionName "3.1.0"
 
@@ -31,6 +31,14 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    // Publishes the release variant as a Maven/JitPack artifact. Without this,
+    // AGP warns "Android Publication 'release' Misconfigured for Variant
+    // 'release'" during every build, since the publish-module.gradle script
+    // (applied above) creates a publication that expects this to exist.
+    publishing {
+        singleVariant("release") {}
     }
 
     compileOptions {
