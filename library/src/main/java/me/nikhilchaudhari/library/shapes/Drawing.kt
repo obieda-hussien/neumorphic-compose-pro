@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withTranslation
@@ -40,7 +41,7 @@ internal fun getDarkShadowOffset(lightSource: LightSource, elevation: Float): Pa
 
 
 /* pressed shape - draw after the content */
-internal fun ContentDrawScope.drawOnForeground(
+internal fun DrawScope.drawOnForeground(
     shapeConfig: ShapeConfig,
     blurMaker: BlurMaker
 ) {

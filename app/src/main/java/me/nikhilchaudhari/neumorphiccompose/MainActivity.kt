@@ -277,7 +277,6 @@ private fun QuickActionItem(
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .clip(RoundedCornerShape(16.dp))
                 .expressiveNeumorphicClickable(
                     onClick = { isPressed = !isPressed },
                     colorScheme = colorScheme,
@@ -343,7 +342,6 @@ private fun MainCardsSection(colorScheme: NeuTheme.NeuColorScheme) {
                     Box(
                         modifier = Modifier
                             .size(48.dp)
-                            .clip(CircleShape)
                             .neumorphic(
                                 neuShape = Punched.Oval(),
                                 lightShadowColor = colorScheme.lightShadowColor,
@@ -969,7 +967,6 @@ private fun BottomNavigationSection(colorScheme: NeuTheme.NeuColorScheme) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(28.dp))
                 .neumorphic(
                     neuShape = Punched.Rounded(28.dp),
                     lightShadowColor = colorScheme.lightShadowColor,

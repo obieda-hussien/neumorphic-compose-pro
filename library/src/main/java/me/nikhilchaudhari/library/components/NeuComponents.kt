@@ -132,7 +132,7 @@ fun NeuButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .clip(shape)
+            .let { if (neuShape is Pressed) it.clip(shape) else it }
             .neumorphic(
                 neuShape = neuShape,
                 lightShadowColor = colorScheme.lightShadowColor,
@@ -191,7 +191,12 @@ fun NeuCard(
 ) {
     Box(
         modifier = modifier
-            .clip(shape)
+            // Only clip when the shape is a recessed/Pressed one, whose inner
+            // shadow needs to stay inside the bounds. Punched (raised) and
+            // Pot (mixed) shapes draw a shadow that's *meant* to extend past
+            // the bounds - clipping unconditionally here would cut that
+            // shadow away, leaving a flat-looking box instead of a soft one.
+            .let { if (neuShape is Pressed) it.clip(shape) else it }
             .neumorphic(
                 neuShape = neuShape,
                 lightShadowColor = colorScheme.lightShadowColor,
@@ -413,7 +418,6 @@ fun NeuSwitch(
             modifier = Modifier
                 .padding(start = thumbOffset)
                 .size(24.dp)
-                .clip(CircleShape)
                 .neumorphic(
                     neuShape = Punched.Oval(),
                     lightShadowColor = colorScheme.lightShadowColor,
@@ -507,7 +511,6 @@ fun NeuSlider(
                 modifier = Modifier
                     .padding(start = thumbOffset)
                     .size(animatedThumbSize)
-                    .clip(CircleShape)
                     .neumorphic(
                         neuShape = Punched.Oval(),
                         lightShadowColor = colorScheme.lightShadowColor,
@@ -567,10 +570,10 @@ fun NeuIconButton(
         modifier = modifier
             .size(size)
             .scale(scale)
-            .clip(CircleShape)
             .then(
                 if (selected) {
                     Modifier
+                        .clip(CircleShape)
                         .neumorphic(
                             neuShape = Pressed.Oval(),
                             lightShadowColor = colorScheme.lightShadowColor,
@@ -580,6 +583,9 @@ fun NeuIconButton(
                         )
                         .background(accentColor.copy(alpha = 0.15f), CircleShape)
                 } else {
+                    // No clip here: the raised (Punched) shadow needs to
+                    // extend past the circle's own bounds to look soft -
+                    // clipping it away leaves a flat-looking ring instead.
                     Modifier
                         .expressiveNeumorphic(
                             neuShape = Punched.Oval(),
@@ -671,7 +677,7 @@ fun NeuChip(
         modifier = modifier
             .scale(scale)
             .height(36.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .let { if (selected) it.clip(RoundedCornerShape(20.dp)) else it }
             .neumorphic(
                 neuShape = neuShape,
                 lightShadowColor = colorScheme.lightShadowColor,
@@ -916,7 +922,7 @@ fun NeuRadioButton(
         modifier = modifier
             .size(size)
             .scale(scale)
-            .clip(CircleShape)
+            .let { if (selected) it.clip(CircleShape) else it }
             .neumorphic(
                 neuShape = if (selected) Pressed.Oval() else Punched.Oval(),
                 lightShadowColor = colorScheme.lightShadowColor,
@@ -1000,7 +1006,7 @@ fun NeuCheckbox(
         modifier = modifier
             .size(size)
             .scale(scale)
-            .clip(RoundedCornerShape(6.dp))
+            .let { if (checked) it.clip(RoundedCornerShape(6.dp)) else it }
             .neumorphic(
                 neuShape = if (checked) Pressed.Rounded(6.dp) else Punched.Rounded(6.dp),
                 lightShadowColor = colorScheme.lightShadowColor,
@@ -1091,7 +1097,6 @@ fun NeuFloatingActionButton(
         modifier = modifier
             .size(size)
             .scale(scale)
-            .clip(CircleShape)
             .neumorphic(
                 neuShape = Punched.Oval(),
                 lightShadowColor = colorScheme.lightShadowColor,
@@ -1233,7 +1238,6 @@ fun NeuSeekBar(
             modifier = Modifier
                 .offset { IntOffset(thumbOffsetX.roundToInt(), 0) }
                 .size(animatedThumbSize)
-                .clip(CircleShape)
                 .neumorphic(
                     neuShape = Punched.Oval(),
                     lightShadowColor = colorScheme.lightShadowColor,
