@@ -260,7 +260,7 @@ val darker = color.darken(0.2f)
 2. **Avoid pure white/black**: Use off-white and dark gray for realistic shadows
 3. **Consider light source**: Keep light source consistent across your UI
 4. **Use appropriate elevation**: 4-12dp works best for most cases
-5. **Clip for Pressed shape**: Use `Modifier.clip()` when using `Pressed` shape
+5. **Clip for Pressed shape only**: Use `Modifier.clip()` when using `Pressed` shape - its inner shadow needs to stay within bounds. **Never clip a `Punched` (raised) or `Pot` shape** - their shadow is *meant* to extend past the shape's own bounds, and `Modifier.clip()` placed before `Modifier.neumorphic()` cuts that overflow away, leaving a flat-looking box instead of a soft shadow. All of this library's own `NeuXxx` components already follow this rule internally.
 
 ## Performance
 
