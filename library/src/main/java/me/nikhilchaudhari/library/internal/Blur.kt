@@ -65,6 +65,49 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     private var blurScript: ScriptIntrinsicBlur? = null
     private var released = false
 
+    // Small pool of reusable downsampled "working" bitmaps, keyed by size.
+    // These are always scratch buffers, never the bitmap ultimately handed
+    // back to the caller (see blur() below - a fresh Bitmap.createScaledBitmap()
+    // copy is what's actually returned/cached whenever sampling > 1, which is
+    // the default). Reusing them instead of allocating a new ARGB_8888 bitmap
+    // on every single blur() call removes the most common allocation in this
+    // whole pipeline - one per shadow-cache miss - cutting GC pressure
+    // (and the pauses that come with it) accordingly.
+    //
+    // Only ever touched from the UI thread, same as every other method here
+    // (blur() runs synchronously inside Compose's draw phase) - no
+    // synchronization needed.
+    private val workingBitmapPool = mutableMapOf<Long, Bitmap>()
+
+    private fun sizeKey(width: Int, height: Int): Long =
+        (width.toLong() shl 32) or (height.toLong() and 0xFFFFFFFFL)
+
+    private fun obtainWorkingBitmap(width: Int, height: Int): Bitmap {
+        val pooled = workingBitmapPool.remove(sizeKey(width, height))
+        return if (pooled != null && !pooled.isRecycled) {
+            // Not guaranteed to be fully overwritten by the draw below (e.g.
+            // a small rounding difference at the edge for an oval/rounded
+            // shape) - clear it so no stale pixels from a previous shadow
+            // can show through.
+            pooled.eraseColor(android.graphics.Color.TRANSPARENT)
+            pooled
+        } else {
+            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        }
+    }
+
+    private fun releaseWorkingBitmap(bitmap: Bitmap) {
+        if (bitmap.isRecycled) return
+        if (workingBitmapPool.size < MAX_POOLED_BITMAPS) {
+            workingBitmapPool[sizeKey(bitmap.width, bitmap.height)] = bitmap
+        } else {
+            // Pool's full of other sizes already - an app with this many
+            // distinct shadow dimensions gets little benefit from pooling
+            // this one anyway, so just let it go rather than grow unbounded.
+            bitmap.recycle()
+        }
+    }
+
     fun blur(
         source: Bitmap,
         radius: Int = defaultBlurRadius,
@@ -86,7 +129,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         val height = (blurConfig.height / sampling).coerceAtLeast(1)
 
         // Downsampled working bitmap - this is what actually gets blurred.
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = obtainWorkingBitmap(width, height)
 
         Canvas(bitmap).run {
             scale(1 / sampling.toFloat(), 1 / sampling.toFloat())
@@ -114,19 +157,40 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             bitmap.stackBlur(scaledRadius)
         }
 
-        return blurBitmap?.let {
-            if (sampling == 1) {
-                it
-            } else {
-                // Upscale back to the requested size. Bilinear upscaling of an
-                // already-blurred image is indistinguishable from blurring at full
-                // resolution to the human eye, since blur removes high-frequency
-                // detail anyway.
-                val scaled = Bitmap.createScaledBitmap(it, blurConfig.width, blurConfig.height, true)
-                if (scaled !== it) it.recycle()
-                scaled
-            }
+        if (blurBitmap == null) {
+            // Nothing downstream needs our working buffer - pool it now.
+            releaseWorkingBitmap(bitmap)
+            return null
         }
+
+        val result = if (sampling == 1) {
+            blurBitmap
+        } else {
+            // Upscale back to the requested size. Bilinear upscaling of an
+            // already-blurred image is indistinguishable from blurring at full
+            // resolution to the human eye, since blur removes high-frequency
+            // detail anyway.
+            val scaled = Bitmap.createScaledBitmap(blurBitmap, blurConfig.width, blurConfig.height, true)
+            // `blurBitmap` here is either our own working buffer (the
+            // RenderScript path mutates and returns it directly) or a
+            // throwaway copy StackBlur made internally - recycle it if it's
+            // the latter, since only our own working buffer gets pooled
+            // (below) rather than recycled.
+            if (scaled !== blurBitmap && blurBitmap !== bitmap) {
+                blurBitmap.recycle()
+            }
+            scaled
+        }
+
+        // Return our own working buffer to the pool, unless it's literally
+        // the bitmap we're about to hand back to the caller (only possible
+        // on the RenderScript path with sampling == 1, where blurBitmap
+        // *is* `bitmap`) - that one is now owned by whoever we return it to.
+        if (bitmap !== result) {
+            releaseWorkingBitmap(bitmap)
+        }
+
+        return result
     }
 
     private fun blurWithRenderScript(bitmap: Bitmap, radius: Int): Bitmap? {
@@ -141,13 +205,16 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         val script = blurScript
             ?: ScriptIntrinsicBlur.create(renderScript, Element.U8_4(renderScript)).also { blurScript = it }
 
-        var input: Allocation? = null
-        var output: Allocation? = null
         return try {
-            input = Allocation.createFromBitmap(
-                renderScript, bitmap, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT
-            )
-            output = Allocation.createTyped(renderScript, input.type)
+            // Because of NeuShadowCache + downsampling, most calls land on
+            // one of a small handful of recurring (width, height) pairs (most
+            // components on a screen only come in a few distinct sizes).
+            // Reusing the Allocation pair for a size instead of allocating a
+            // fresh one every call avoids that GPU-memory alloc/dealloc
+            // churn - copyFrom()/copyTo() replace createFromBitmap()'s own
+            // internal allocation.
+            val (input, output) = allocationsFor(renderScript, bitmap)
+            input.copyFrom(bitmap)
             script.setInput(input)
             script.setRadius(radius.coerceIn(1, 25).toFloat())
             script.forEach(output)
@@ -158,10 +225,35 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             // it, and fall back to StackBlur for this frame.
             release()
             bitmap.stackBlur(radius)
-        } finally {
-            input?.destroy()
-            output?.destroy()
         }
+    }
+
+    // Small, size-bounded cache of (input, output) Allocation pairs keyed by
+    // bitmap dimensions. Capped so a screen with many differently-sized
+    // components can't let this grow without bound.
+    private val allocationsBySize = LinkedHashMap<Pair<Int, Int>, Pair<Allocation, Allocation>>()
+
+    private fun allocationsFor(renderScript: RenderScript, bitmap: Bitmap): Pair<Allocation, Allocation> {
+        val key = bitmap.width to bitmap.height
+        allocationsBySize[key]?.let { return it }
+
+        if (allocationsBySize.size >= MAX_CACHED_ALLOCATION_SIZES) {
+            // Evict the least-recently-added entry (LinkedHashMap iteration
+            // order is insertion order here).
+            val oldestKey = allocationsBySize.keys.firstOrNull()
+            oldestKey?.let { allocationsBySize.remove(it) }?.let { (input, output) ->
+                input.destroy()
+                output.destroy()
+            }
+        }
+
+        val input = Allocation.createFromBitmap(
+            renderScript, bitmap, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT
+        )
+        val output = Allocation.createTyped(renderScript, input.type)
+        val pair = input to output
+        allocationsBySize[key] = pair
+        return pair
     }
 
     /**
@@ -172,13 +264,23 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     fun release() {
         if (released) return
         released = true
+        allocationsBySize.values.forEach { (input, output) ->
+            input.destroy()
+            output.destroy()
+        }
+        allocationsBySize.clear()
         blurScript?.destroy()
         blurScript = null
         rs?.destroy()
         rs = null
+        workingBitmapPool.values.forEach { if (!it.isRecycled) it.recycle() }
+        workingBitmapPool.clear()
     }
 
     companion object {
+        private const val MAX_POOLED_BITMAPS = 8
+        private const val MAX_CACHED_ALLOCATION_SIZES = 8
+
         /**
          * Suggested blur radius for a device's display density, capped to avoid
          * runaway blur cost on very high density screens.
