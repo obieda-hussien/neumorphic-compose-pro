@@ -390,15 +390,23 @@ private fun MainCardsSection(colorScheme: NeuTheme.NeuColorScheme) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            NeuCard(
-                colorScheme = colorScheme,
-                modifier = Modifier.weight(1f),
-                elevation = 8.dp
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(80.dp)
+                    .neumorphicClickable(
+                        onClick = { },
+                        neuShape = Punched.Rounded(20.dp),
+                        lightShadowColor = colorScheme.lightShadowColor,
+                        darkShadowColor = colorScheme.darkShadowColor,
+                        elevation = 8.dp
+                    )
+                    .background(colorScheme.backgroundColor, RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center
             ) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
                         text = "Punched",
@@ -419,7 +427,8 @@ private fun MainCardsSection(colorScheme: NeuTheme.NeuColorScheme) {
                     .weight(1f)
                     .height(80.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .neumorphic(
+                    .neumorphicClickable(
+                        onClick = { },
                         neuShape = Pressed.Rounded(20.dp),
                         lightShadowColor = colorScheme.lightShadowColor,
                         darkShadowColor = colorScheme.darkShadowColor,

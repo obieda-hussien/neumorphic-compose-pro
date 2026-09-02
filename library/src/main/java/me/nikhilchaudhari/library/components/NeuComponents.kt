@@ -416,7 +416,7 @@ fun NeuSwitch(
     ) {
         Box(
             modifier = Modifier
-                .padding(start = thumbOffset)
+                .offset(x = thumbOffset)
                 .size(24.dp)
                 .neumorphic(
                     neuShape = Punched.Oval(),
@@ -509,7 +509,7 @@ fun NeuSlider(
             // Thumb
             Box(
                 modifier = Modifier
-                    .padding(start = thumbOffset)
+                    .offset(x = thumbOffset)
                     .size(animatedThumbSize)
                     .neumorphic(
                         neuShape = Punched.Oval(),
