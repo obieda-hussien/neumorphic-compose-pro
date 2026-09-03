@@ -1,10 +1,16 @@
 package me.nikhilchaudhari.library.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -46,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -54,6 +61,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -562,65 +570,88 @@ fun NeuIconButton(
         ),
         label = "iconButtonScale"
     )
+
+    // Crossfades between the raised (unselected) and recessed (selected)
+    // shadow treatments instead of cutting between them in a single frame -
+    // see the identical pattern (and rationale) in NeuChip above. This is
+    // what makes moving the selection between nav bar items (or any other
+    // use of `selected`) read as one smooth motion rather than a hard pop.
+    val selectedAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "iconButtonSelectedAlpha"
+    )
     
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
+    val unselectedContentColor = if (enabled) {
+        colorScheme.onBackgroundColor.takeIf { it != Color.Unspecified }
+            ?: MaterialTheme.colorScheme.onSurface
+    } else {
+        (colorScheme.onBackgroundColor.takeIf { it != Color.Unspecified }
+            ?: MaterialTheme.colorScheme.onSurface).copy(alpha = 0.38f)
+    }
 
     Box(
         modifier = modifier
             .size(size)
             .scale(scale)
-            .then(
-                if (selected) {
-                    Modifier
-                        .clip(CircleShape)
-                        .neumorphic(
-                            neuShape = Pressed.Oval(),
-                            lightShadowColor = colorScheme.lightShadowColor,
-                            darkShadowColor = colorScheme.darkShadowColor,
-                            elevation = 4.dp,
-                            strokeWidth = 3.dp
-                        )
-                        .background(accentColor.copy(alpha = 0.15f), CircleShape)
-                } else {
-                    // No clip here: the raised (Punched) shadow needs to
-                    // extend past the circle's own bounds to look soft -
-                    // clipping it away leaves a flat-looking ring instead.
-                    Modifier
-                        .expressiveNeumorphic(
-                            neuShape = Punched.Oval(),
-                            lightShadowColor = colorScheme.lightShadowColor,
-                            darkShadowColor = colorScheme.darkShadowColor,
-                            elevation = 6.dp,
-                            pressed = isPressed,
-                            hovered = isHovered
-                        )
-                        .background(colorScheme.backgroundColor, CircleShape)
-                }
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = enabled,
-                role = Role.Button,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
     ) {
-        val contentColor = if (enabled) {
-            if (selected) {
-                accentColor
+        // Unselected (raised) layer. No clip here: the raised (Punched)
+        // shadow needs to extend past the circle's own bounds to look soft -
+        // clipping it away leaves a flat-looking ring instead.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer { alpha = 1f - selectedAlpha }
+                .expressiveNeumorphic(
+                    neuShape = Punched.Oval(),
+                    lightShadowColor = colorScheme.lightShadowColor,
+                    darkShadowColor = colorScheme.darkShadowColor,
+                    elevation = 6.dp,
+                    pressed = isPressed,
+                    hovered = isHovered
+                )
+                .background(colorScheme.backgroundColor, CircleShape)
+        )
+        // Selected (recessed) layer
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer { alpha = selectedAlpha }
+                .clip(CircleShape)
+                .neumorphic(
+                    neuShape = Pressed.Oval(),
+                    lightShadowColor = colorScheme.lightShadowColor,
+                    darkShadowColor = colorScheme.darkShadowColor,
+                    elevation = 4.dp,
+                    strokeWidth = 3.dp
+                )
+                .background(accentColor.copy(alpha = 0.15f), CircleShape)
+        )
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(CircleShape)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    role = Role.Button,
+                    onClick = onClick
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            val contentColor = if (enabled) {
+                lerp(unselectedContentColor, accentColor, selectedAlpha)
             } else {
-                colorScheme.onBackgroundColor.takeIf { it != Color.Unspecified }
-                    ?: MaterialTheme.colorScheme.onSurface
+                unselectedContentColor
             }
-        } else {
-            (colorScheme.onBackgroundColor.takeIf { it != Color.Unspecified }
-                ?: MaterialTheme.colorScheme.onSurface).copy(alpha = 0.38f)
-        }
-        
-        CompositionLocalProvider(LocalContentColor provides contentColor) {
-            content()
+            
+            CompositionLocalProvider(LocalContentColor provides contentColor) {
+                content()
+            }
         }
     }
 }
@@ -650,18 +681,18 @@ fun NeuChip(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    
-    val backgroundColor by animateColorAsState(
-        targetValue = if (selected) {
-            (colorScheme.accentColor.takeIf { it != Color.Unspecified }
-                ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.15f)
-        } else {
-            colorScheme.backgroundColor
-        },
+
+    // Crossfades between the raised (unselected) and recessed (selected)
+    // shadow treatments instead of cutting between them in a single frame -
+    // the unselected layer fades out exactly as the selected layer fades in,
+    // so a selection change reads as one smooth motion, on both the chip
+    // that's losing selection and the one gaining it.
+    val selectedAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "chipBackground"
+        label = "chipSelectedAlpha"
     )
-    
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
         animationSpec = spring(
@@ -671,44 +702,77 @@ fun NeuChip(
         label = "chipScale"
     )
 
-    val neuShape = if (selected) Pressed.Rounded(20.dp) else Punched.Rounded(20.dp)
-    
-    Row(
+    val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
+        ?: MaterialTheme.colorScheme.primary
+    val unselectedContentColor = colorScheme.onBackgroundColor.takeIf { it != Color.Unspecified }
+        ?: MaterialTheme.colorScheme.onSurface
+    val shape = RoundedCornerShape(20.dp)
+
+    Box(
         modifier = modifier
             .scale(scale)
             .height(36.dp)
-            .let { if (selected) it.clip(RoundedCornerShape(20.dp)) else it }
-            .neumorphic(
-                neuShape = neuShape,
-                lightShadowColor = colorScheme.lightShadowColor,
-                darkShadowColor = colorScheme.darkShadowColor,
-                elevation = if (selected) 3.dp else 5.dp,
-                strokeWidth = 3.dp
-            )
-            .background(backgroundColor, RoundedCornerShape(20.dp))
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = enabled,
-                onClick = onClick
-            )
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        leadingIcon?.invoke()
-        
-        val contentColor = if (selected) {
-            colorScheme.accentColor.takeIf { it != Color.Unspecified }
-                ?: MaterialTheme.colorScheme.primary
-        } else {
-            colorScheme.onBackgroundColor.takeIf { it != Color.Unspecified }
-                ?: MaterialTheme.colorScheme.onSurface
-        }
-        
-        CompositionLocalProvider(LocalContentColor provides contentColor) {
-            ProvideTextStyle(MaterialTheme.typography.labelLarge) {
-                content()
+        // Unselected (raised) layer
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer { alpha = 1f - selectedAlpha }
+                .neumorphic(
+                    neuShape = Punched.Rounded(20.dp),
+                    lightShadowColor = colorScheme.lightShadowColor,
+                    darkShadowColor = colorScheme.darkShadowColor,
+                    elevation = 5.dp,
+                    strokeWidth = 3.dp
+                )
+                .background(colorScheme.backgroundColor, shape)
+        )
+        // Selected (recessed) layer
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer { alpha = selectedAlpha }
+                .clip(shape)
+                .neumorphic(
+                    neuShape = Pressed.Rounded(20.dp),
+                    lightShadowColor = colorScheme.lightShadowColor,
+                    darkShadowColor = colorScheme.darkShadowColor,
+                    elevation = 3.dp,
+                    strokeWidth = 3.dp
+                )
+                .background(accentColor.copy(alpha = 0.15f), shape)
+        )
+
+        Row(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(shape)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    onClick = onClick
+                )
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Fades and slides in/out instead of popping, so the selection
+            // change reads as one smooth motion rather than an abrupt cut.
+            AnimatedVisibility(
+                visible = leadingIcon != null,
+                enter = fadeIn(tween(200)) + expandHorizontally(tween(200)),
+                exit = fadeOut(tween(150)) + shrinkHorizontally(tween(150))
+            ) {
+                leadingIcon?.invoke()
+            }
+
+            val contentColor = lerp(unselectedContentColor, accentColor, selectedAlpha)
+
+            CompositionLocalProvider(LocalContentColor provides contentColor) {
+                ProvideTextStyle(MaterialTheme.typography.labelLarge) {
+                    content()
+                }
             }
         }
     }
@@ -911,11 +975,14 @@ fun NeuRadioButton(
         ),
         label = "radioInnerSize"
     )
-    
-    val borderColor by animateColorAsState(
-        targetValue = if (selected) accentColor else colorScheme.darkShadowColor,
+
+    // Soft accent tint on selection instead of a hard colored ring - a solid
+    // 2dp border reads as standard Material, not neumorphic, and stood out
+    // against the rest of this library's soft-shadow-only styling.
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) accentColor.copy(alpha = 0.15f) else colorScheme.backgroundColor,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "radioBorder"
+        label = "radioBackground"
     )
 
     Box(
@@ -930,12 +997,7 @@ fun NeuRadioButton(
                 elevation = 4.dp,
                 strokeWidth = 2.dp
             )
-            .background(colorScheme.backgroundColor, CircleShape)
-            .border(
-                width = 2.dp,
-                color = borderColor,
-                shape = CircleShape
-            )
+            .background(backgroundColor, CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -1092,7 +1154,11 @@ fun NeuFloatingActionButton(
         label = "fabElevation"
     )
 
-    // Outer container with neumorphic shadow
+    // Single neumorphic circle - matches the rest of the app's icon buttons
+    // (soft neutral background + accent-tinted icon) instead of the old
+    // nested "soft outer ring + solid flat inner circle" look, which read as
+    // a plain Material FAB bolted onto a neumorphic ring rather than a
+    // neumorphic component in its own right.
     Box(
         modifier = modifier
             .size(size)
@@ -1103,31 +1169,17 @@ fun NeuFloatingActionButton(
                 darkShadowColor = colorScheme.darkShadowColor,
                 elevation = elevation
             )
-            .background(colorScheme.backgroundColor, CircleShape),
+            .background(colorScheme.backgroundColor, CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
-        // Inner colored circle with subtle border
-        Box(
-            modifier = Modifier
-                .size(size - 8.dp)
-                .clip(CircleShape)
-                .background(accentColor, CircleShape)
-                .border(
-                    width = 2.dp,
-                    color = Color.White.copy(alpha = 0.2f),
-                    shape = CircleShape
-                )
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    role = Role.Button,
-                    onClick = onClick
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            CompositionLocalProvider(LocalContentColor provides Color.White) {
-                content()
-            }
+        CompositionLocalProvider(LocalContentColor provides accentColor) {
+            content()
         }
     }
 }
