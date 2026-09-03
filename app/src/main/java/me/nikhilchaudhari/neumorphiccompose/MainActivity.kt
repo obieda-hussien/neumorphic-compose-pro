@@ -78,6 +78,7 @@ import me.nikhilchaudhari.library.components.NeuTextField
 import me.nikhilchaudhari.library.expressiveNeumorphic
 import me.nikhilchaudhari.library.expressiveNeumorphicClickable
 import me.nikhilchaudhari.library.neumorphic
+import me.nikhilchaudhari.library.neumorphicClickable
 import me.nikhilchaudhari.library.shapes.Pot
 import me.nikhilchaudhari.library.shapes.Pressed
 import me.nikhilchaudhari.library.shapes.Punched
