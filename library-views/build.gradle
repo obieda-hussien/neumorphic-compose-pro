@@ -4,9 +4,11 @@ plugins {
 }
 
 ext {
-    PUBLISH_GROUP_ID = 'me.nikhilchaudhari'
+    // See the matching comment in library/build.gradle - unused by JitPack,
+    // only relevant for an optional Maven Central publish.
+    PUBLISH_GROUP_ID = 'io.github.obieda-hussien'
     PUBLISH_VERSION = '4.0.0'
-    PUBLISH_ARTIFACT_ID = 'neumorphismViews'
+    PUBLISH_ARTIFACT_ID = 'library-views'
 }
 
 apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
@@ -23,7 +25,12 @@ android {
         // depending on :library, which was a latent bug.
         minSdk 24
         targetSdk 36
-        versionCode 4
+        // Kept equal to :library's versionCode - these are two independently
+        // versioned Android library modules (no shared-APK versionCode
+        // constraint applies), but there's no reason for them to drift
+        // either, and matching them removes any impression that one module
+        // gets less attention/maintenance than the other.
+        versionCode 5
         versionName "4.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

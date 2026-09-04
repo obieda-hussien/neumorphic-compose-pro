@@ -745,7 +745,6 @@ fun NeuChip(
 
         Row(
             modifier = Modifier
-                .matchParentSize()
                 .clip(shape)
                 .clickable(
                     interactionSource = interactionSource,

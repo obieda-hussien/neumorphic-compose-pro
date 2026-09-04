@@ -40,25 +40,28 @@ afterEvaluate {
 
                 pom {
                     name = 'ComposeNeumorphism'
-                    description = 'An experimental Neumorphism UI library for Jetpack Compose'
-                    url = 'https://github.com/CuriousNikhil/neumorphic-compose'
+                    description = 'A Neumorphism UI library for Jetpack Compose - obieda-hussien/neumorphic-compose-pro fork'
+                    url = 'https://github.com/obieda-hussien/neumorphic-compose-pro'
                     licenses {
                         license {
                             name = 'Apache License, Version 2.0'
-                            url = 'https://github.com/CuriousNikhil/neumorphic-compose/blob/main/LICENSE'
+                            url = 'https://github.com/obieda-hussien/neumorphic-compose-pro/blob/main/LICENSE'
                         }
                     }
                     developers {
                         developer {
-                            id = 'curiousnikhil'
-                            name = 'Nikhil Chaudhari'
-                            email = 'nikhyl777@gmail.com'
+                            id = 'obieda-hussien'
+                            name = 'obieda-hussien'
+                            // Fill in a real contact email here before actually
+                            // running ./gradlew publish against Maven Central -
+                            // left blank rather than guessed.
+                            email = ''
                         }
                     }
                     scm {
-                        connection = 'scm:git:git://github.com/CuriousNikhil/neumorphic-compose.git'
-                        developerConnection = 'scm:git:ssh://github.com/CuriousNikhil/neumorphic-compose.git'
-                        url = 'https://github.com/CuriousNikhil/neumorphic-compose'
+                        connection = 'scm:git:git://github.com/obieda-hussien/neumorphic-compose-pro.git'
+                        developerConnection = 'scm:git:ssh://github.com/obieda-hussien/neumorphic-compose-pro.git'
+                        url = 'https://github.com/obieda-hussien/neumorphic-compose-pro'
                     }
                 }
             }

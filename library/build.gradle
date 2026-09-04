@@ -5,9 +5,15 @@ plugins {
 }
 
 ext {
-    PUBLISH_GROUP_ID = 'me.nikhilchaudhari'
+    // NOTE: this group/artifact ID is only used by the OPTIONAL Maven Central
+    // publish path (scripts/publish-module.gradle, `./gradlew publish`) -
+    // JitPack (what this repo's README actually documents) ignores this
+    // entirely and derives its own coordinates from the GitHub username,
+    // repo name, and this module's folder name instead. Kept in sync with
+    // library-views' own PUBLISH_GROUP_ID below.
+    PUBLISH_GROUP_ID = 'io.github.obieda-hussien'
     PUBLISH_VERSION = '4.0.0'
-    PUBLISH_ARTIFACT_ID = 'composeNeumorphism'
+    PUBLISH_ARTIFACT_ID = 'library'
 }
 
 apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
