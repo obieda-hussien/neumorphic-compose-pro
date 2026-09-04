@@ -77,13 +77,15 @@ class NeuShadowCacheKeyTest {
 }
 
 /**
- * [NeuShadowCache] itself (put/get/clear) touches [android.graphics.Bitmap] and
- * [android.util.LruCache], both of which are Android-framework classes that
- * throw under plain JUnit unless the module's testOptions enable
- * `returnDefaultValues`/Robolectric. Exercising the actual cache storage (as
- * opposed to just the key builder above) belongs in an instrumented
- * (androidTest) test running on a real device/emulator - see
- * NeuShadowCacheInstrumentedTest in src/androidTest.
+ * [BlurConfig]'s own constants - the defaults that drive the downsampling
+ * and radius-capping behavior described in [me.nikhilchaudhari.library.internal.BlurMaker].
+ * Exercising [NeuShadowCache] itself (put/get/clear) touches
+ * [android.graphics.Bitmap] and [android.util.LruCache], both of which are
+ * Android-framework classes that throw under plain JUnit unless the
+ * module's testOptions enable `returnDefaultValues`/Robolectric - that
+ * belongs in an instrumented (androidTest) test running on a real
+ * device/emulator instead - see NeuShadowCacheInstrumentedTest in
+ * src/androidTest.
  */
 class BlurConfigTest {
 

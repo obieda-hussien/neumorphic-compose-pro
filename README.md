@@ -5,7 +5,7 @@ A modern, flexible Neumorphism UI library for Android supporting both **Jetpack 
 [![](https://jitpack.io/v/obieda-hussien/neumorphic-compose-pro.svg)](https://jitpack.io/#obieda-hussien/neumorphic-compose-pro) ![List of Awesome List Badge](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg) [![Awesome Kotlin Badge](https://kotlin.link/awesome-kotlin.svg)](https://github.com/KotlinBy/awesome-kotlin)
 
 <p align="center">
-<img src="https://github.com/CuriousNikhil/neumorphic-compose/blob/main/static/complete_screen.png?raw=true" height=400>
+<img src="https://github.com/obieda-hussien/neumorphic-compose-pro/blob/main/static/complete_screen.png?raw=true" height=400>
 </p>
 
 ## Features ✨
@@ -504,7 +504,7 @@ Modifier.neumorphic(
 
 ## License
 
-Licensed under Apache License, Version 2.0 [here](https://github.com/CuriousNikhil/neumorphic-compose/blob/main/LICENSE)
+Licensed under Apache License, Version 2.0 [here](https://github.com/obieda-hussien/neumorphic-compose-pro/blob/main/LICENSE)
 
 ## Contributing
 

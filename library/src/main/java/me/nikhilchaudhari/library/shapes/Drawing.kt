@@ -19,6 +19,20 @@ import kotlin.math.roundToInt
 
 
 /**
+ * Human-readable, stable string for a [CornerType], for use in
+ * [NeuShadowCache] cache keys. `CornerType.Oval` is a plain Kotlin `object`
+ * (not a `data object`), so its default `toString()` includes an identity
+ * hash suffix (e.g. "Oval@1a2b3c") - stable for the lifetime of the app
+ * process (it's a true singleton, always the same instance), but an opaque,
+ * non-obvious thing to have baked into a cache key. This gives an explicit,
+ * readable descriptor instead.
+ */
+internal fun CornerType.cacheDescriptor(): String = when (this) {
+    is CornerType.Oval -> "Oval"
+    is CornerType.Rounded -> "Rounded(${radius.value})"
+}
+
+/**
  * Calculate shadow offsets based on light source direction
  */
 internal fun getLightShadowOffset(lightSource: LightSource, elevation: Float): Pair<Float, Float> {
@@ -87,7 +101,7 @@ internal fun DrawScope.drawOnForeground(
         strokeWidthPx = strokeWidth.toFloat(),
         lightColor = shapeConfig.lightShadowColor,
         darkColor = shapeConfig.darkShadowColor,
-        cornerDescriptor = cornerType.toString(),
+        cornerDescriptor = cornerType.cacheDescriptor(),
         lightSource = shapeConfig.lightSource.name
     )
 
@@ -171,7 +185,7 @@ internal fun ContentDrawScope.drawOnBackground(
         strokeWidthPx = 0f,
         lightColor = shapeConfig.lightShadowColor,
         darkColor = Color.Transparent,
-        cornerDescriptor = cornerType.toString(),
+        cornerDescriptor = cornerType.cacheDescriptor(),
         lightSource = shapeConfig.lightSource.name
     )
     val darkCacheKey = NeuShadowCache.keyFor(
@@ -182,7 +196,7 @@ internal fun ContentDrawScope.drawOnBackground(
         strokeWidthPx = 0f,
         lightColor = Color.Transparent,
         darkColor = shapeConfig.darkShadowColor,
-        cornerDescriptor = cornerType.toString(),
+        cornerDescriptor = cornerType.cacheDescriptor(),
         lightSource = shapeConfig.lightSource.name
     )
 
