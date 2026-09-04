@@ -4,22 +4,34 @@ plugins {
 }
 
 ext {
-    PUBLISH_GROUP_ID = 'me.nikhilchaudhari'
-    PUBLISH_VERSION = '2.0.0'
-    PUBLISH_ARTIFACT_ID = 'neumorphismViews'
+    // See the matching comment in library/build.gradle - unused by JitPack,
+    // only relevant for an optional Maven Central publish.
+    PUBLISH_GROUP_ID = 'io.github.obieda-hussien'
+    PUBLISH_VERSION = '4.0.0'
+    PUBLISH_ARTIFACT_ID = 'library-views'
 }
 
 apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
 
 android {
     namespace 'me.nikhilchaudhari.library.views'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
-        minSdk 21
-        targetSdk 34
-        versionCode 2
-        versionName "2.0.0"
+        // Must be >= :library's minSdk (24) since this module depends on it -
+        // a lower value here fails the manifest merge ("uses-sdk:minSdkVersion
+        // X cannot be smaller than version 24 declared in library manifest").
+        // This module was previously pinned to minSdk 21 despite already
+        // depending on :library, which was a latent bug.
+        minSdk 24
+        targetSdk 36
+        // Kept equal to :library's versionCode - these are two independently
+        // versioned Android library modules (no shared-APK versionCode
+        // constraint applies), but there's no reason for them to drift
+        // either, and matching them removes any impression that one module
+        // gets less attention/maintenance than the other.
+        versionCode 5
+        versionName "4.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -30,6 +42,11 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    // See the identical block in library/build.gradle for why this is needed.
+    publishing {
+        singleVariant("release") {}
     }
 
     compileOptions {
@@ -43,11 +60,17 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
-    implementation project(path: ':library')
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.material
+
+    // `api`, not `implementation`: NeumorphicView/Button/CardView expose
+    // `me.nikhilchaudhari.library.LightSource` directly in their public
+    // properties (e.g. `var neuLightSource: LightSource`), so consumers of
+    // this module need :library's types resolvable transitively.
+    api project(path: ':library')
+
+    testImplementation libs.junit
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.androidx.test.espresso.core
 }

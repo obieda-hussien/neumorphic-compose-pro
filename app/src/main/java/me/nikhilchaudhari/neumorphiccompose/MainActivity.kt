@@ -78,6 +78,7 @@ import me.nikhilchaudhari.library.components.NeuTextField
 import me.nikhilchaudhari.library.expressiveNeumorphic
 import me.nikhilchaudhari.library.expressiveNeumorphicClickable
 import me.nikhilchaudhari.library.neumorphic
+import me.nikhilchaudhari.library.neumorphicClickable
 import me.nikhilchaudhari.library.shapes.Pot
 import me.nikhilchaudhari.library.shapes.Pressed
 import me.nikhilchaudhari.library.shapes.Punched
@@ -196,7 +197,7 @@ private fun HeaderSection(colorScheme: NeuTheme.NeuColorScheme) {
             size = 52.dp
         ) {
             Icon(
-                imageVector = if (notificationEnabled) Icons.Filled.Notifications else Icons.Filled.Notifications,
+                imageVector = Icons.Filled.Notifications,
                 contentDescription = "Notifications",
                 tint = if (notificationEnabled) colorScheme.accentColor else colorScheme.onBackgroundColor
             )
@@ -277,7 +278,6 @@ private fun QuickActionItem(
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .clip(RoundedCornerShape(16.dp))
                 .expressiveNeumorphicClickable(
                     onClick = { isPressed = !isPressed },
                     colorScheme = colorScheme,
@@ -343,7 +343,6 @@ private fun MainCardsSection(colorScheme: NeuTheme.NeuColorScheme) {
                     Box(
                         modifier = Modifier
                             .size(48.dp)
-                            .clip(CircleShape)
                             .neumorphic(
                                 neuShape = Punched.Oval(),
                                 lightShadowColor = colorScheme.lightShadowColor,
@@ -392,15 +391,23 @@ private fun MainCardsSection(colorScheme: NeuTheme.NeuColorScheme) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            NeuCard(
-                colorScheme = colorScheme,
-                modifier = Modifier.weight(1f),
-                elevation = 8.dp
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(80.dp)
+                    .neumorphicClickable(
+                        onClick = { },
+                        neuShape = Punched.Rounded(20.dp),
+                        lightShadowColor = colorScheme.lightShadowColor,
+                        darkShadowColor = colorScheme.darkShadowColor,
+                        elevation = 8.dp
+                    )
+                    .background(colorScheme.backgroundColor, RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center
             ) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
                         text = "Punched",
@@ -421,7 +428,8 @@ private fun MainCardsSection(colorScheme: NeuTheme.NeuColorScheme) {
                     .weight(1f)
                     .height(80.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .neumorphic(
+                    .neumorphicClickable(
+                        onClick = { },
                         neuShape = Pressed.Rounded(20.dp),
                         lightShadowColor = colorScheme.lightShadowColor,
                         darkShadowColor = colorScheme.darkShadowColor,
@@ -969,7 +977,6 @@ private fun BottomNavigationSection(colorScheme: NeuTheme.NeuColorScheme) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(28.dp))
                 .neumorphic(
                     neuShape = Punched.Rounded(28.dp),
                     lightShadowColor = colorScheme.lightShadowColor,

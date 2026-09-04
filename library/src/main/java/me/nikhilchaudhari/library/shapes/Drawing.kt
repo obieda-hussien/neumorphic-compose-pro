@@ -7,13 +7,30 @@ import android.graphics.drawable.GradientDrawable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withTranslation
 import me.nikhilchaudhari.library.LightSource
+import me.nikhilchaudhari.library.NeuPerformanceConfig
 import me.nikhilchaudhari.library.internal.BlurMaker
+import me.nikhilchaudhari.library.internal.NeuShadowCache
 import kotlin.math.roundToInt
 
+
+/**
+ * Human-readable, stable string for a [CornerType], for use in
+ * [NeuShadowCache] cache keys. `CornerType.Oval` is a plain Kotlin `object`
+ * (not a `data object`), so its default `toString()` includes an identity
+ * hash suffix (e.g. "Oval@1a2b3c") - stable for the lifetime of the app
+ * process (it's a true singleton, always the same instance), but an opaque,
+ * non-obvious thing to have baked into a cache key. This gives an explicit,
+ * readable descriptor instead.
+ */
+internal fun CornerType.cacheDescriptor(): String = when (this) {
+    is CornerType.Oval -> "Oval"
+    is CornerType.Rounded -> "Rounded(${radius.value})"
+}
 
 /**
  * Calculate shadow offsets based on light source direction
@@ -38,7 +55,7 @@ internal fun getDarkShadowOffset(lightSource: LightSource, elevation: Float): Pa
 
 
 /* pressed shape - draw after the content */
-internal fun ContentDrawScope.drawOnForeground(
+internal fun DrawScope.drawOnForeground(
     shapeConfig: ShapeConfig,
     blurMaker: BlurMaker
 ) {
@@ -76,7 +93,19 @@ internal fun ContentDrawScope.drawOnForeground(
     val lightOffset = getLightShadowOffset(shapeConfig.lightSource, elevation)
     val darkOffset = getDarkShadowOffset(shapeConfig.lightSource, elevation)
 
-    generateShadowBitmap(
+    val cacheKey = NeuShadowCache.keyFor(
+        pass = "fg",
+        widthPx = size.width.toInt(),
+        heightPx = size.height.toInt(),
+        elevationPx = elevation,
+        strokeWidthPx = strokeWidth.toFloat(),
+        lightColor = shapeConfig.lightShadowColor,
+        darkColor = shapeConfig.darkShadowColor,
+        cornerDescriptor = cornerType.cacheDescriptor(),
+        lightSource = shapeConfig.lightSource.name
+    )
+
+    val bitmap = NeuShadowCache.get(cacheKey) ?: generateShadowBitmap(
         size.width.toInt(),
         size.height.toInt(),
         lightShadowDrawable,
@@ -85,7 +114,9 @@ internal fun ContentDrawScope.drawOnForeground(
         blurMaker,
         lightOffset,
         darkOffset
-    )?.asImageBitmap()?.let {
+    )?.also { NeuShadowCache.put(cacheKey, it) }
+
+    bitmap?.asImageBitmap()?.let {
         drawScope.drawImage(it)
     }
 }
@@ -146,13 +177,38 @@ internal fun ContentDrawScope.drawOnBackground(
         setNeuShape(cornerType, ShadowForm.Default, radius, shapeConfig.lightSource)
     }
 
+    val lightCacheKey = NeuShadowCache.keyFor(
+        pass = "bg-light",
+        widthPx = width,
+        heightPx = height,
+        elevationPx = elevation,
+        strokeWidthPx = 0f,
+        lightColor = shapeConfig.lightShadowColor,
+        darkColor = Color.Transparent,
+        cornerDescriptor = cornerType.cacheDescriptor(),
+        lightSource = shapeConfig.lightSource.name
+    )
+    val darkCacheKey = NeuShadowCache.keyFor(
+        pass = "bg-dark",
+        widthPx = width,
+        heightPx = height,
+        elevationPx = elevation,
+        strokeWidthPx = 0f,
+        lightColor = Color.Transparent,
+        darkColor = shapeConfig.darkShadowColor,
+        cornerDescriptor = cornerType.cacheDescriptor(),
+        lightSource = shapeConfig.lightSource.name
+    )
+
     val lightShadowBitmap =
-        lightShadowDrawable
+        (NeuShadowCache.get(lightCacheKey) ?: lightShadowDrawable
             .toBlurredBitmap(width, height, elevation, blurMaker)
+            ?.also { NeuShadowCache.put(lightCacheKey, it) })
             ?.asImageBitmap()
     val darkShadowBitmap =
-        darkShadowDrawable
+        (NeuShadowCache.get(darkCacheKey) ?: darkShadowDrawable
             .toBlurredBitmap(width, height, elevation, blurMaker)
+            ?.also { NeuShadowCache.put(darkCacheKey, it) })
             ?.asImageBitmap()
 
     // Calculate insets based on light source
@@ -206,11 +262,14 @@ internal fun Bitmap.blurred(
     blurMaker: BlurMaker,
     block: Canvas.() -> Unit
 ): Bitmap? {
-    return blurMaker.blur(this.also {
-        Canvas(this).run {
-            block()
-        }
-    })
+    return blurMaker.blur(
+        this.also {
+            Canvas(this).run {
+                block()
+            }
+        },
+        sampling = NeuPerformanceConfig.blurDownsampling
+    )
 }
 
 internal sealed class ShadowForm {

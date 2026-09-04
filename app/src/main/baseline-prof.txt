@@ -1,0 +1,23 @@
+# Baseline profile for the demo app (human-readable format).
+#
+# Same rationale as library/src/main/baseline-prof.txt: a hand-authored,
+# class-level-only starting profile (no guessed method signatures) covering
+# this app's own always-hot-at-launch classes, on top of whatever the
+# composeNeumorphism library itself already contributes via its own bundled
+# baseline-prof.txt (AGP merges both automatically).
+#
+# This does NOT require a device to build/ship - AGP compiles it into the
+# APK/AAB as-is. It's a smaller win than a real Macrobenchmark-generated
+# profile though, since it only preloads classes rather than recording which
+# specific methods run during actual startup. To generate a precise one:
+#
+#   1. Add a `:baselineprofile` module using the
+#      androidx.baselineprofile Gradle plugin (see
+#      https://developer.android.com/topic/performance/baselineprofiles/create-baselineprofile)
+#   2. Run it on a real device or emulator - it drives the app through a
+#      cold start (and any other critical user journeys you add) and records
+#      exactly which classes/methods actually execute.
+#   3. `./gradlew :app:generateReleaseBaselineProfile` copies the result into
+#      app/src/main/baseline-prof.txt, replacing this hand-authored version.
+
+Lme/nikhilchaudhari/neumorphiccompose/MainActivity;

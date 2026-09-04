@@ -8,7 +8,11 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -17,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import me.nikhilchaudhari.library.shapes.NeuShape
 import me.nikhilchaudhari.library.shapes.Punched
 
@@ -45,7 +50,7 @@ fun Modifier.neumorphicClickable(
     lightSource: LightSource = LightSource.TOP_LEFT
 ) = composed {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressed by rememberMinHoldPressedState(interactionSource)
     
     this
         .animatedNeumorphic(
@@ -99,7 +104,7 @@ fun Modifier.expressiveNeumorphicClickable(
     pressedScale: Float = 0.96f
 ) = composed {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressed by rememberMinHoldPressedState(interactionSource)
     val isHovered by interactionSource.collectIsHoveredAsState()
     
     val effectiveLightShadowColor = colorScheme?.lightShadowColor ?: lightShadowColor
@@ -276,3 +281,39 @@ fun Modifier.boldNeumorphic(
     elevation = 14.dp,
     lightSource = lightSource
 )
+
+/**
+ * Tracks [interactionSource]'s pressed state, but holds the "pressed" value
+ * for at least [minHoldMillis] after release even if the actual press was
+ * shorter than that.
+ *
+ * Without this, a quick/light tap can complete (down + up) faster than a
+ * press-feedback animation (a spring driving a scale/elevation change, as
+ * every `NeuXxx` component and `neumorphicClickable`/`expressiveNeumorphicClickable`
+ * use) has time to visibly ramp up - the tap registers and `onClick` fires,
+ * but nothing appears to have happened, since the animation never got a
+ * frame where the pressed state was actually visible. A firm/held-down
+ * press, by contrast, easily outlasts the animation and looks correct -
+ * which is why this bug reads as "only shows for a hard press".
+ *
+ * This doesn't change *when* onClick fires or how quickly the button
+ * responds to input - only how long the pressed *visual* is guaranteed to
+ * stay on screen once it starts, so quick taps get to actually show it.
+ */
+@Composable
+internal fun rememberMinHoldPressedState(
+    interactionSource: MutableInteractionSource,
+    minHoldMillis: Long = 100L
+): State<Boolean> {
+    val rawPressed by interactionSource.collectIsPressedAsState()
+    val visuallyPressed = remember { mutableStateOf(false) }
+    LaunchedEffect(rawPressed) {
+        if (rawPressed) {
+            visuallyPressed.value = true
+        } else {
+            delay(minHoldMillis)
+            visuallyPressed.value = false
+        }
+    }
+    return visuallyPressed
+}

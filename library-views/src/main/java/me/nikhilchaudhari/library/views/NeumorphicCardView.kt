@@ -7,6 +7,7 @@ import android.util.AttributeSet
 import android.widget.FrameLayout
 import me.nikhilchaudhari.library.LightSource
 import me.nikhilchaudhari.library.internal.BlurMaker
+import me.nikhilchaudhari.library.internal.NeuBlurMakerHolder
 import me.nikhilchaudhari.library.internal.stackBlur
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -112,6 +113,11 @@ class NeumorphicCardView @JvmOverloads constructor(
     // Internal blur maker
     private var blurMaker: BlurMaker? = null
 
+    /** Test-only accessor - exposes the shared BlurMaker so tests can
+     *  verify it's the same instance across all neumorphic Views. */
+    @androidx.annotation.VisibleForTesting
+    fun blurMakerForTest(): BlurMaker? = blurMaker
+
     // Cached bitmaps
     private var lightShadowBitmap: Bitmap? = null
     private var darkShadowBitmap: Bitmap? = null
@@ -125,7 +131,7 @@ class NeumorphicCardView @JvmOverloads constructor(
     }
 
     init {
-        blurMaker = BlurMaker(context, calculateDefaultBlurRadius())
+        blurMaker = NeuBlurMakerHolder.get(context)
 
         // Parse XML attributes
         attrs?.let {
@@ -445,6 +451,9 @@ class NeumorphicCardView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         invalidateShadowBitmaps()
+        // Note: blurMaker is intentionally NOT released here - it is a shared,
+        // app-wide instance (see NeuBlurMakerHolder), and other neumorphic
+        // views/composables elsewhere on screen may still be using it.
     }
 
     fun refresh() {

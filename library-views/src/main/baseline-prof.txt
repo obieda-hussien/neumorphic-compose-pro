@@ -1,0 +1,12 @@
+# Baseline profile for neumorphismViews (human-readable format).
+#
+# Same rationale as library/src/main/baseline-prof.txt - a hand-authored,
+# class-level-only profile. This module's classes are plain Android Views
+# (not Compose-generated), so there's no synthetic-signature risk here, but
+# method-level rules still weren't hand-authored to keep this consistent and
+# low-risk across all three modules; see the library module's profile for
+# the full rationale.
+
+Lme/nikhilchaudhari/library/views/NeumorphicView;
+Lme/nikhilchaudhari/library/views/NeumorphicButton;
+Lme/nikhilchaudhari/library/views/NeumorphicCardView;

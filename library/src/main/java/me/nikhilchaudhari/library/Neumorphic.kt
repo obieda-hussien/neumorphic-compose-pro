@@ -1,14 +1,12 @@
 package me.nikhilchaudhari.library
 
-import android.content.Context
-import android.os.Build
-import android.util.DisplayMetrics
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.DrawModifier
@@ -20,13 +18,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import me.nikhilchaudhari.library.internal.BlurConfig
 import me.nikhilchaudhari.library.internal.BlurMaker
+import me.nikhilchaudhari.library.internal.NeuBlurMakerHolder
 import me.nikhilchaudhari.library.shapes.NeuShape
 import me.nikhilchaudhari.library.shapes.Punched
 import me.nikhilchaudhari.library.shapes.ShapeConfig
-import kotlin.math.min
-import kotlin.math.roundToInt
 
 /**
  * Insets configuration for neumorphic shadows
@@ -104,9 +100,16 @@ fun Modifier.neumorphic(
     lightSource: LightSource = LightSource.TOP_LEFT
 ) = composed {
     val context = LocalContext.current
+
+    // A single RenderScript context (on API < 31) is shared across every
+    // neumorphic component in the app instead of one per component - see
+    // NeuBlurMakerHolder for why. It is intentionally never released per
+    // composable, since other components on screen may still be using it.
+    val blurMaker = remember(context) { NeuBlurMakerHolder.get(context) }
+
     this.then(
         NeumorphicModifier(
-            context,
+            blurMaker,
             neuInsets,
             neuShape,
             lightShadowColor,
@@ -300,7 +303,7 @@ fun Modifier.expressiveNeumorphic(
 }
 
 internal class NeumorphicModifier(
-    context: Context,
+    private val blurMaker: BlurMaker,
     private val insets: NeuInsets,
     private val neuShape: NeuShape,
     private val lightShadowColor: Color,
@@ -310,9 +313,6 @@ internal class NeumorphicModifier(
     private val lightSource: LightSource,
     inspectorInfo: InspectorInfo.() -> Unit
 ) : DrawModifier, InspectorValueInfo(inspectorInfo) {
-
-    private val blurMaker =
-        BlurMaker(context, calculateDefaultBlurRadius(context.resources.displayMetrics))
 
     override fun ContentDrawScope.draw() {
         val shapeConfig = ShapeConfig(
@@ -324,14 +324,5 @@ internal class NeumorphicModifier(
             lightSource = lightSource
         )
         neuShape.drawShadows(this, blurMaker, shapeConfig)
-    }
-
-    private fun calculateDefaultBlurRadius(displayMetrics: DisplayMetrics): Int {
-        val densityStable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            DisplayMetrics.DENSITY_DEVICE_STABLE / DisplayMetrics.DENSITY_DEFAULT.toFloat()
-        } else {
-            displayMetrics.density
-        }
-        return min(BlurConfig.MAX_RADIUS, (densityStable * 10).roundToInt())
     }
 }
