@@ -35,7 +35,10 @@ class NeuPerformanceConfigTest {
     }
 
     @Test
-    fun `shadowCacheBudgetKB rejects negative values`() {
+    fun `shadowCacheBudgetKB rejects values below 1`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            NeuPerformanceConfig.shadowCacheBudgetKB = 0
+        }
         assertThrows(IllegalArgumentException::class.java) {
             NeuPerformanceConfig.shadowCacheBudgetKB = -1
         }

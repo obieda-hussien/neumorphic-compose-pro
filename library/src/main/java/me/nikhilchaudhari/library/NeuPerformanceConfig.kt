@@ -64,7 +64,12 @@ object NeuPerformanceConfig {
      */
     var shadowCacheBudgetKB: Int = 6 * 1024
         set(value) {
-            require(value >= 0) { "shadowCacheBudgetKB must be >= 0, was $value" }
+            // NeuShadowCache.resizeBudget() itself coerces to a 1KB floor, so
+            // the requirement here must match - a caller passing 0 expecting
+            // it to disable the cache would otherwise get a working 1KB
+            // cache instead, silently not doing what the setter's contract
+            // implied.
+            require(value >= 1) { "shadowCacheBudgetKB must be >= 1, was $value" }
             field = value
             NeuShadowCache.resizeBudget(value)
         }

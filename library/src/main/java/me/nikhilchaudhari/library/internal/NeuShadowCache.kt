@@ -96,6 +96,10 @@ internal object NeuShadowCache {
         val r = (red * 255).roundToInt()
         val g = (green * 255).roundToInt()
         val b = (blue * 255).roundToInt()
-        return "$a$r$g$b"
+        // Zero-padded hex, not decimal concatenation: without padding,
+        // "$a$r$g$b" can collide between different colors (e.g. a=1,r=23 and
+        // a=12,r=3 both produce "123..."), which would return the wrong
+        // cached shadow bitmap for a component with the colliding color.
+        return String.format("%02x%02x%02x%02x", a, r, g, b)
     }
 }

@@ -3,6 +3,7 @@ package me.nikhilchaudhari.library.internal
 import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -95,6 +96,9 @@ class BlurConfigTest {
 
     @Test
     fun `max radius is capped to a sane value`() {
-        assert(BlurConfig.MAX_RADIUS in 1..25)
+        // assert() is skipped entirely unless JVM assertions are explicitly
+        // enabled (they aren't by default), which would make this test pass
+        // without ever actually checking anything - assertTrue always runs.
+        assertTrue(BlurConfig.MAX_RADIUS in 1..25)
     }
 }
