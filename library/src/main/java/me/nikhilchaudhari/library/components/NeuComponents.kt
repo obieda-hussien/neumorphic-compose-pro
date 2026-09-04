@@ -20,7 +20,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -52,7 +51,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -61,6 +59,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -73,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import me.nikhilchaudhari.library.NeuInsets
 import me.nikhilchaudhari.library.NeuTheme
 import me.nikhilchaudhari.library.expressiveNeumorphic
+import me.nikhilchaudhari.library.rememberMinHoldPressedState
 import me.nikhilchaudhari.library.neumorphic
 import me.nikhilchaudhari.library.shapes.NeuShape
 import me.nikhilchaudhari.library.shapes.Pressed
@@ -108,7 +108,7 @@ fun NeuButton(
     content: @Composable () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressed by rememberMinHoldPressedState(interactionSource)
     val isHovered by interactionSource.collectIsHoveredAsState()
     
     val scale by animateFloatAsState(
@@ -461,7 +461,7 @@ fun NeuSlider(
     thumbSize: Dp = 24.dp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressed by rememberMinHoldPressedState(interactionSource)
     
     val animatedThumbSize by animateDpAsState(
         targetValue = if (isPressed) thumbSize * 1.2f else thumbSize,
@@ -555,7 +555,7 @@ fun NeuIconButton(
     content: @Composable () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressed by rememberMinHoldPressedState(interactionSource)
     val isHovered by interactionSource.collectIsHoveredAsState()
     
     val scale by animateFloatAsState(
@@ -680,7 +680,7 @@ fun NeuChip(
     content: @Composable () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressed by rememberMinHoldPressedState(interactionSource)
 
     // Crossfades between the raised (unselected) and recessed (selected)
     // shadow treatments instead of cutting between them in a single frame -
@@ -953,7 +953,7 @@ fun NeuRadioButton(
     size: Dp = 24.dp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressed by rememberMinHoldPressedState(interactionSource)
     
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
@@ -1038,7 +1038,7 @@ fun NeuCheckbox(
     size: Dp = 24.dp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressed by rememberMinHoldPressedState(interactionSource)
     
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
@@ -1122,7 +1122,7 @@ fun NeuFloatingActionButton(
     content: @Composable () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPressed by rememberMinHoldPressedState(interactionSource)
     val isHovered by interactionSource.collectIsHoveredAsState()
     
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
