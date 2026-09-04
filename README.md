@@ -16,7 +16,70 @@ A modern, flexible Neumorphism UI library for Android supporting both **Jetpack 
 - 🎭 **Material You Integration** - Dynamic colors on Android 12+
 - 💫 **Animation Support** - Smooth press animations
 - 🔆 **Configurable Light Source** - TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
-- 🔋 **Low-power rendering (v3.1.0)** - shadow bitmaps are cached and shared instead of being regenerated on every frame; see [Performance](#performance)
+- 🔋 **Low-power rendering** - shadow bitmaps are cached and shared instead of being regenerated on every frame; see [Performance](#performance)
+- ✨ **Smooth crossfade transitions** - selection changes (chips, nav bar) fade between states instead of cutting abruptly; see [What's New in 4.0.0](#whats-new-in-400)
+
+## What's New in 4.0.0
+
+Both modules (`library` and `library-views`) are now versioned together -
+previously `library` was on `3.1.0` while `library-views` trailed behind at
+`2.1.0`, which was more confusing than useful since they're released
+together from the same repo. `4.0.0` is a substantial release; the public
+API is unchanged (nothing here requires code changes on your end), but a
+lot changed underneath it:
+
+**Fixed:**
+- **App freezing on launch** and **battery/CPU drain during animation** -
+  see [Performance](#performance) for the full breakdown (shared
+  `RenderScript` context, shadow bitmap caching, downsampled blur).
+- **A real crash**: `NeuSwitch`'s and `NeuSlider`'s thumb used
+  `Modifier.padding()` with a spring-animated offset. Bouncy springs
+  overshoot past their target before settling, which briefly pushed the
+  padding value negative - and `Modifier.padding()` throws on any negative
+  value. Switched to `Modifier.offset()`, which is both the semantically
+  correct modifier for animated positioning and one that allows negative
+  values without crashing.
+- **Raised (`Punched`) shapes losing their shadow when clipped**: several
+  components (and demo screens) applied `Modifier.clip()` *before*
+  `Modifier.neumorphic()`, which cut away the soft shadow's overflow
+  outside the shape's bounds, leaving a flat-looking box. Fixed throughout
+  the library and demo; see the updated [Best Practices](#best-practices)
+  entry on this. The `Pot` shape (raised + recessed combined) needed a
+  deeper fix, since a single external clip can't apply to only one of its
+  two shadow passes - it now clips its recessed pass internally instead.
+- **Press feedback invisible on quick/light taps**: every component's tap
+  animation was driven directly by the raw pressed state, which a fast tap
+  can complete faster than the animation has time to visibly show - so it
+  only looked like anything happened on a firm, held press. Fixed by
+  holding the visual "pressed" state for a guaranteed minimum ~100ms
+  regardless of how quick the actual tap was.
+- A cache-key collision risk in `NeuShadowCache` (different colors could
+  hash to the same key), and a couple of smaller validation/test issues
+  caught in review.
+
+**Changed:**
+- `NeuFloatingActionButton` and `NeuRadioButton` restyled to match the rest
+  of the library's soft, dual-shadow look - both previously mixed in a hard
+  solid-fill circle / colored border, which is a Material-standard look,
+  not a neumorphic one.
+- `NeuChip` and `NeuIconButton` (used by the demo's "Categories" chips and
+  bottom navigation bar) now crossfade between their raised/recessed
+  treatments on selection changes instead of cutting between them in a
+  single frame, and `NeuChip`'s leading icon fades in/out instead of
+  popping.
+
+**Added:**
+- `NeuPerformanceConfig` - runtime-tunable blur downsampling and shadow
+  cache budget; see [Performance](#performance).
+- Hand-authored baseline profiles for all three modules; see
+  [Performance](#performance).
+- A Gradle version catalog (`gradle/libs.versions.toml`) as the single
+  source of truth for dependency versions across all three modules, and a
+  fix for two `implementation`-vs-`api` visibility bugs that could break
+  external JitPack consumers who don't separately declare `material3`/
+  `compose-ui`.
+- Real unit/instrumented tests for the caching and shared-`BlurMaker`
+  logic (previously only placeholder tests existed anywhere in the repo).
 
 ## Installation
 
@@ -37,13 +100,13 @@ dependencyResolutionManagement {
 ### Jetpack Compose Library
 
 ```kotlin
-implementation("com.github.obieda-hussien.neumorphic-compose-pro:library:3.1.0")
+implementation("com.github.obieda-hussien.neumorphic-compose-pro:library:4.0.0")
 ```
 
 ### XML/Views Library
 
 ```kotlin
-implementation("com.github.obieda-hussien.neumorphic-compose-pro:library-views:2.1.0")
+implementation("com.github.obieda-hussien.neumorphic-compose-pro:library-views:4.0.0")
 ```
 
 > Coming from the upstream `me.nikhilchaudhari:composeNeumorphism` artifact? The public API is unchanged - swap the dependency coordinates above and everything else keeps working as-is.
@@ -267,7 +330,7 @@ val darker = color.darken(0.2f)
 Neumorphism is expensive by nature - every soft shadow is a blurred bitmap, and
 the upstream implementation regenerated that bitmap **from scratch on every
 single draw call**, including every frame of a press animation. This fork
-(`3.1.0` / `2.1.0`) keeps the exact same visual output but changes *how often*
+(as of v4.0.0) keeps the exact same visual output but changes *how often*
 and *how expensively* that work happens.
 
 ### What was actually draining the battery
