@@ -24,17 +24,12 @@ import me.nikhilchaudhari.library.shapes.NeuShape
 import me.nikhilchaudhari.library.shapes.Punched
 import me.nikhilchaudhari.library.shapes.ShapeConfig
 
-/**
- * Insets configuration for neumorphic shadows
- */
+/** Insets configuration for neumorphic shadows. */
 data class NeuInsets(
     val horizontal: Dp = 6.dp,
     val vertical: Dp = 6.dp
 )
 
-/**
- * Light source direction for neumorphic shadows
- */
 enum class LightSource {
     TOP_LEFT,
     TOP_RIGHT,
@@ -42,54 +37,23 @@ enum class LightSource {
     BOTTOM_RIGHT
 }
 
-/**
- * Animation type for neumorphic effects
- */
 enum class NeuAnimationType {
-    /** Linear animation with tween */
     TWEEN,
-    /** Spring physics-based animation - more natural feel */
     SPRING,
-    /** Bouncy spring animation - Material 3 Expressive */
     SPRING_BOUNCY,
-    /** No animation */
     NONE
 }
 
-/**
- * Constants for neumorphic effects
- */
 object NeuConstants {
-    /** Factor by which elevation is reduced when pressed */
     const val PRESSED_ELEVATION_FACTOR = 0.5f
-    
-    /** Default animation duration in milliseconds */
     const val DEFAULT_ANIMATION_DURATION_MS = 150
-    
-    /** Default spring stiffness for animations */
     const val DEFAULT_SPRING_STIFFNESS = Spring.StiffnessMedium
-    
-    /** Default spring damping for animations */
     const val DEFAULT_SPRING_DAMPING = Spring.DampingRatioMediumBouncy
-    
-    /** Expressive spring stiffness - more bouncy and playful */
     const val EXPRESSIVE_SPRING_STIFFNESS = Spring.StiffnessLow
-    
-    /** Expressive spring damping - more bouncy effect */
     const val EXPRESSIVE_SPRING_DAMPING = Spring.DampingRatioLowBouncy
 }
 
-/**
- * Apply neumorphic effect to a composable
- *
- * @param neuInsets Shadow insets (horizontal and vertical)
- * @param neuShape Shape type (Punched, Pressed, Pot)
- * @param lightShadowColor Color of the light shadow (typically white or light gray)
- * @param darkShadowColor Color of the dark shadow (typically dark gray)
- * @param strokeWidth Stroke width for internal shadows
- * @param elevation Shadow elevation
- * @param lightSource Direction of the light source for shadow placement
- */
+/** Apply a neumorphic effect to a composable. */
 fun Modifier.neumorphic(
     neuInsets: NeuInsets = NeuInsets(),
     neuShape: NeuShape = Punched.Rounded(),
@@ -100,11 +64,6 @@ fun Modifier.neumorphic(
     lightSource: LightSource = LightSource.TOP_LEFT
 ) = composed {
     val context = LocalContext.current
-
-    // A single RenderScript context (on API < 31) is shared across every
-    // neumorphic component in the app instead of one per component - see
-    // NeuBlurMakerHolder for why. It is intentionally never released per
-    // composable, since other components on screen may still be using it.
     val blurMaker = remember(context) { NeuBlurMakerHolder.get(context) }
 
     this.then(
@@ -132,19 +91,6 @@ fun Modifier.neumorphic(
     )
 }
 
-/**
- * Animated neumorphic effect with smooth transitions
- *
- * @param neuInsets Shadow insets (horizontal and vertical)
- * @param neuShape Shape type (Punched, Pressed, Pot)
- * @param lightShadowColor Color of the light shadow
- * @param darkShadowColor Color of the dark shadow
- * @param strokeWidth Stroke width for internal shadows
- * @param elevation Shadow elevation
- * @param lightSource Direction of the light source
- * @param pressed Whether the component is pressed (for animation)
- * @param animationDuration Duration of the animation in milliseconds
- */
 fun Modifier.animatedNeumorphic(
     neuInsets: NeuInsets = NeuInsets(),
     neuShape: NeuShape = Punched.Rounded(),
@@ -161,7 +107,7 @@ fun Modifier.animatedNeumorphic(
         animationSpec = tween(durationMillis = animationDuration),
         label = "elevationAnimation"
     )
-    
+
     neumorphic(
         neuInsets = neuInsets,
         neuShape = neuShape,
@@ -173,22 +119,6 @@ fun Modifier.animatedNeumorphic(
     )
 }
 
-/**
- * Spring physics-based animated neumorphic effect
- * Material 3 Expressive style with bouncy, natural feel
- *
- * @param neuInsets Shadow insets (horizontal and vertical)
- * @param neuShape Shape type (Punched, Pressed, Pot)
- * @param lightShadowColor Color of the light shadow
- * @param darkShadowColor Color of the dark shadow
- * @param strokeWidth Stroke width for internal shadows
- * @param elevation Shadow elevation
- * @param lightSource Direction of the light source
- * @param pressed Whether the component is pressed (for animation)
- * @param animationType Type of animation to use
- * @param stiffness Spring stiffness (only used for spring animations)
- * @param dampingRatio Spring damping ratio (only used for spring animations)
- */
 fun Modifier.springNeumorphic(
     neuInsets: NeuInsets = NeuInsets(),
     neuShape: NeuShape = Punched.Rounded(),
@@ -203,7 +133,7 @@ fun Modifier.springNeumorphic(
     dampingRatio: Float = NeuConstants.EXPRESSIVE_SPRING_DAMPING
 ) = composed {
     val targetElevation = if (pressed) elevation * NeuConstants.PRESSED_ELEVATION_FACTOR else elevation
-    
+
     val animatedElevation by when (animationType) {
         NeuAnimationType.SPRING, NeuAnimationType.SPRING_BOUNCY -> {
             animateDpAsState(
@@ -222,15 +152,11 @@ fun Modifier.springNeumorphic(
                 label = "tweenElevationAnimation"
             )
         }
-        NeuAnimationType.NONE -> {
-            animateDpAsState(
-                targetValue = targetElevation,
-                animationSpec = spring(stiffness = Spring.StiffnessHigh),
-                label = "instantElevationAnimation"
-            )
+        NeuAnimationType.NONE -> targetElevation.let {
+            androidx.compose.runtime.rememberUpdatedState(it)
         }
     }
-    
+
     neumorphic(
         neuInsets = neuInsets,
         neuShape = neuShape,
@@ -242,20 +168,6 @@ fun Modifier.springNeumorphic(
     )
 }
 
-/**
- * Expressive neumorphic effect with Material 3 Expressive animations
- * Combines spring physics with expressive color transitions
- *
- * @param neuInsets Shadow insets (horizontal and vertical)
- * @param neuShape Shape type (Punched, Pressed, Pot)
- * @param lightShadowColor Color of the light shadow
- * @param darkShadowColor Color of the dark shadow
- * @param strokeWidth Stroke width for internal shadows
- * @param elevation Shadow elevation
- * @param lightSource Direction of the light source
- * @param pressed Whether the component is pressed (for animation)
- * @param hovered Whether the component is hovered (for animation)
- */
 fun Modifier.expressiveNeumorphic(
     neuInsets: NeuInsets = NeuInsets(),
     neuShape: NeuShape = Punched.Rounded(),
@@ -272,7 +184,7 @@ fun Modifier.expressiveNeumorphic(
         hovered -> elevation * 1.2f
         else -> elevation
     }
-    
+
     val animatedElevation by animateDpAsState(
         targetValue = targetElevation,
         animationSpec = spring(
@@ -281,7 +193,7 @@ fun Modifier.expressiveNeumorphic(
         ),
         label = "expressiveElevationAnimation"
     )
-    
+
     val animatedStrokeWidth by animateDpAsState(
         targetValue = if (pressed) strokeWidth * 0.8f else strokeWidth,
         animationSpec = spring(
@@ -290,7 +202,7 @@ fun Modifier.expressiveNeumorphic(
         ),
         label = "expressiveStrokeAnimation"
     )
-    
+
     neumorphic(
         neuInsets = neuInsets,
         neuShape = neuShape,
