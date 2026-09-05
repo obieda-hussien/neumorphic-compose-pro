@@ -1,35 +1,112 @@
-ext["signing.keyId"] = ''
-ext["signing.password"] = ''
-ext["signing.secretKeyRingFile"] = ''
-ext["ossrhUsername"] = ''
-ext["ossrhPassword"] = ''
-ext["sonatypeStagingProfileId"] = ''
+/*
+ * Root publishing configuration.
+ *
+ * Goals:
+ * 1. Never require signing credentials during a normal JitPack build.
+ * 2. Allow local Maven Central publishing when credentials are available.
+ * 3. Never inject null/empty values into Gradle publishing credentials.
+ */
 
-File secretPropsFile = project.rootProject.file('local.properties')
+ext.signingKeyId = ''
+ext.signingPassword = ''
+ext.signingSecretKeyRingFile = ''
+
+ext.ossrhUsername = ''
+ext.ossrhPassword = ''
+ext.sonatypeStagingProfileId = ''
+
+/*
+ * Read local.properties first.
+ *
+ * Example:
+ *
+ * signingKeyId=ABC123
+ * signingPassword=secret
+ * signingSecretKeyRingFile=/absolute/path/to/secring.gpg
+ *
+ * ossrhUsername=...
+ * ossrhPassword=...
+ * sonatypeStagingProfileId=...
+ */
+File secretPropsFile = rootProject.file('local.properties')
+
 if (secretPropsFile.exists()) {
-    // Read local.properties file first if it exists
-    Properties p = new Properties()
-    new FileInputStream(secretPropsFile).withCloseable { is -> p.load(is) }
-    p.each { name, value -> ext[name] = value }
+
+    Properties properties = new Properties()
+
+    secretPropsFile.withInputStream { stream ->
+        properties.load(stream)
+    }
+
+    properties.each { key, value ->
+        ext[key.toString()] = value.toString()
+    }
+
 } else {
-    // Use system environment variables
-    ext["ossrhUsername"] = System.getenv('OSSRH_USERNAME')
-    ext["ossrhPassword"] = System.getenv('OSSRH_PASSWORD')
-    ext["sonatypeStagingProfileId"] = System.getenv('SONATYPE_STAGING_PROFILE_ID')
-    ext["signing.keyId"] = System.getenv('SIGNING_KEY_ID')
-    ext["signing.password"] = System.getenv('SIGNING_PASSWORD')
-    ext["signing.secretKeyRingFile"] = System.getenv('SIGNING_SECRET_KEY_RING_FILE')
+
+    // CI / JitPack environment variables.
+    ext.ossrhUsername =
+            System.getenv('OSSRH_USERNAME') ?: ''
+
+    ext.ossrhPassword =
+            System.getenv('OSSRH_PASSWORD') ?: ''
+
+    ext.sonatypeStagingProfileId =
+            System.getenv('SONATYPE_STAGING_PROFILE_ID') ?: ''
+
+    ext.signingKeyId =
+            System.getenv('SIGNING_KEY_ID') ?: ''
+
+    ext.signingPassword =
+            System.getenv('SIGNING_PASSWORD') ?: ''
+
+    ext.signingSecretKeyRingFile =
+            System.getenv('SIGNING_SECRET_KEY_RING_FILE') ?: ''
 }
 
-nexusPublishing {
-    repositories {
-        sonatype {
-            stagingProfileId = sonatypeStagingProfileId
-            username = ossrhUsername
-            password = ossrhPassword
 
-            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+/*
+ * Maven Central / Sonatype configuration is enabled ONLY
+ * when credentials actually exist.
+ *
+ * This is important for JitPack:
+ * JitPack should build the libraries without trying to
+ * authenticate to Sonatype or initialize a staging repository.
+ */
+boolean hasSonatypeCredentials =
+        rootProject.ext.ossrhUsername.toString().trim() &&
+        rootProject.ext.ossrhPassword.toString().trim() &&
+        rootProject.ext.sonatypeStagingProfileId.toString().trim()
+
+if (hasSonatypeCredentials) {
+
+    nexusPublishing {
+
+        repositories {
+
+            sonatype {
+
+                stagingProfileId =
+                        rootProject.ext.sonatypeStagingProfileId.toString().trim()
+
+                username =
+                        rootProject.ext.ossrhUsername.toString().trim()
+
+                password =
+                        rootProject.ext.ossrhPassword.toString().trim()
+
+                nexusUrl.set(
+                        uri(
+                                "https://s01.oss.sonatype.org/service/local/"
+                        )
+                )
+
+                snapshotRepositoryUrl.set(
+                        uri(
+                                "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+                        )
+                )
+            }
         }
     }
 }
