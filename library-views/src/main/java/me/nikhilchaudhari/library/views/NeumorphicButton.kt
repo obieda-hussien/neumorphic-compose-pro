@@ -287,11 +287,19 @@ class NeumorphicButton @JvmOverloads constructor(
 
         if (width <= 0 || height <= 0) return
 
-        lightShadowBitmap = generateShadowBitmap(neuLightShadowColor)
-        darkShadowBitmap = generateShadowBitmap(neuDarkShadowColor)
-
-        if (neuShapeType == NeuShapeType.PRESSED || neuShapeType == NeuShapeType.POT) {
-            foregroundShadowBitmap = generateForegroundShadowBitmap()
+        when (neuShapeType) {
+            NeuShapeType.PUNCHED -> {
+                lightShadowBitmap = generateShadowBitmap(neuLightShadowColor)
+                darkShadowBitmap = generateShadowBitmap(neuDarkShadowColor)
+            }
+            NeuShapeType.PRESSED -> {
+                foregroundShadowBitmap = generateForegroundShadowBitmap()
+            }
+            NeuShapeType.POT -> {
+                lightShadowBitmap = generateShadowBitmap(neuLightShadowColor)
+                darkShadowBitmap = generateShadowBitmap(neuDarkShadowColor)
+                foregroundShadowBitmap = generateForegroundShadowBitmap()
+            }
         }
     }
 
@@ -412,6 +420,7 @@ class NeumorphicButton @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        needsRedraw = true
         invalidateShadowBitmaps()
     }
 
