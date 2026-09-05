@@ -1,20 +1,6 @@
-/*
- * Common Maven publishing configuration for Android library modules.
- *
- * JitPack:
- *   - publishes to MavenLocal internally
- *   - does NOT require GPG signing
- *
- * Maven Central:
- *   - signing is enabled only when a complete signing configuration exists
- */
-
 apply plugin: 'maven-publish'
 
 
-/*
- * Sources JAR
- */
 tasks.register('androidSourcesJar', Jar) {
 
     archiveClassifier.set('sources')
@@ -37,9 +23,6 @@ artifacts {
 }
 
 
-/*
- * Basic publication coordinates
- */
 group = PUBLISH_GROUP_ID
 version = PUBLISH_VERSION
 
@@ -56,29 +39,14 @@ afterEvaluate {
                 artifactId = PUBLISH_ARTIFACT_ID
                 version = PUBLISH_VERSION
 
-                /*
-                 * Android AAR
-                 */
                 if (project.plugins.findPlugin('com.android.library')) {
-
                     from components.release
-
-                } else {
-
-                    artifact(
-                            "$buildDir/libs/${project.getName()}-${version}.jar"
-                    )
                 }
 
-                /*
-                 * Sources
-                 */
+
                 artifact tasks.named('androidSourcesJar')
 
 
-                /*
-                 * Maven POM metadata
-                 */
                 pom {
 
                     name = 'ComposeNeumorphism'
@@ -94,7 +62,8 @@ afterEvaluate {
 
                         license {
 
-                            name = 'Apache License, Version 2.0'
+                            name =
+                                    'Apache License, Version 2.0'
 
                             url =
                                     'https://www.apache.org/licenses/LICENSE-2.0.txt'
@@ -107,14 +76,7 @@ afterEvaluate {
                         developer {
 
                             id = 'obieda-hussien'
-
                             name = 'Obieda Hussien'
-
-                            /*
-                             * Do not invent a personal email here.
-                             * Add your real public OSS email before
-                             * publishing to Maven Central.
-                             */
                         }
                     }
 
@@ -138,27 +100,11 @@ afterEvaluate {
 
 
 /*
- * OPTIONAL GPG SIGNING
+ * GPG signing is OPTIONAL.
  *
- * Gradle's signing plugin requires:
- *   signing.keyId
- *   signing.password
- *   signing.secretKeyRingFile
- *
- * We enable it ONLY if all three values exist and the key file exists.
- *
- * Therefore:
- *
- * JitPack:
- *   no signing credentials
- *   => no signing plugin
- *   => no signReleasePublication task
- *
- * Maven Central:
- *   credentials supplied
- *   => signing plugin enabled
- *   => publication is signed
+ * JitPack must work without any signing configuration.
  */
+
 def signingKeyId =
         rootProject.ext.has('signingKeyId')
                 ? rootProject.ext.signingKeyId.toString().trim()
@@ -173,6 +119,7 @@ def signingSecretKeyRingFile =
         rootProject.ext.has('signingSecretKeyRingFile')
                 ? rootProject.ext.signingSecretKeyRingFile.toString().trim()
                 : ''
+
 
 boolean hasValidSigningConfiguration =
         !signingKeyId.isEmpty() &&
