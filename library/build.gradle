@@ -55,16 +55,8 @@ android {
     }
 
 
-    /*
-     * Publish the release Android variant.
-     *
-     * This keeps the Maven publication compatible with
-     * both JitPack and normal Maven publishing.
-     */
     publishing {
-
-        singleVariant('release') {
-        }
+        singleVariant("release") {}
     }
 
 
@@ -76,13 +68,11 @@ android {
 
 
     kotlinOptions {
-
         jvmTarget = '17'
     }
 
 
     buildFeatures {
-
         compose true
     }
 
@@ -90,7 +80,6 @@ android {
     testOptions {
 
         unitTests {
-
             returnDefaultValues = true
         }
     }
@@ -99,58 +88,29 @@ android {
 
 dependencies {
 
-    /*
-     * Compose BOM
-     */
-    api platform(
-            libs.compose.bom
-    )
+    api platform(libs.compose.bom)
 
-
-    /*
-     * AndroidX
-     */
     implementation libs.androidx.core.ktx
     implementation libs.androidx.appcompat
     implementation libs.material
     implementation libs.androidx.profileinstaller
 
-
-    /*
-     * Compose public API
-     */
     api libs.androidx.compose.ui
     api libs.androidx.compose.ui.graphics
 
     implementation libs.androidx.compose.ui.tooling.preview
     implementation libs.androidx.compose.foundation
 
-
-    /*
-     * Material 3 is visible from the public API.
-     */
     api libs.androidx.compose.material3
 
-
-    /*
-     * Animation
-     */
     implementation libs.androidx.compose.animation
     implementation libs.androidx.compose.animation.core
     implementation libs.androidx.compose.animation.graphics
 
-
-    /*
-     * Tests
-     */
     testImplementation libs.junit
 
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso.core
 
-
-    /*
-     * Debug tooling
-     */
     debugImplementation libs.androidx.compose.ui.tooling
 }
