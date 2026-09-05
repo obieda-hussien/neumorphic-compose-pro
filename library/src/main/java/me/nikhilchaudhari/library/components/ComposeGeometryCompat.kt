@@ -1,3 +1,5 @@
+@file:Suppress("EXTENSION_SHADOWED_BY_MEMBER")
+
 package me.nikhilchaudhari.library.components
 
 import androidx.compose.ui.geometry.Size
