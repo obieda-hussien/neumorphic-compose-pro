@@ -53,6 +53,7 @@ internal class RenderScriptBlurEngine(
     }
 
     override fun blur(bitmap: Bitmap, radius: Int): Bitmap? {
+        if (bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) return null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return bitmap.stackBlur(radius.coerceIn(1, BlurConfig.MAX_RADIUS))
         }
@@ -60,7 +61,11 @@ internal class RenderScriptBlurEngine(
         val context = contextRef.get() ?: return StackBlurEngine().blur(bitmap, radius)
 
         return synchronized(lock) {
-            val renderScript = ensureResourcesLocked(context)
+            val renderScript = try {
+                ensureResourcesLocked(context)
+            } catch (_: Exception) {
+                return@synchronized StackBlurEngine().blur(bitmap, radius)
+            }
             val script = blurScript ?: return@synchronized StackBlurEngine().blur(bitmap, radius)
 
             try {
@@ -83,10 +88,15 @@ internal class RenderScriptBlurEngine(
         val context = contextOverride ?: contextRef.get()
             ?: throw IllegalStateException("Application context is unavailable")
         val created = RenderScript.create(context)
-        val script = ScriptIntrinsicBlur.create(created, Element.U8_4(created))
-        rs = created
-        blurScript = script
-        return created
+        return try {
+            val script = ScriptIntrinsicBlur.create(created, Element.U8_4(created))
+            rs = created
+            blurScript = script
+            created
+        } catch (error: Throwable) {
+            created.destroy()
+            throw error
+        }
     }
 
     private fun allocationsFor(renderScript: RenderScript, bitmap: Bitmap): Pair<Allocation, Allocation> {
