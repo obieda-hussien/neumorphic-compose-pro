@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -130,7 +131,7 @@ class NeuComponentsInteractionTest {
             useUnmergedTree = true
         )
             .performTouchInput {
-                click(centerRight)
+                click(Offset(visibleSize.width * 0.9f, visibleSize.height * 0.5f))
             }
 
         composeRule.runOnIdle {
