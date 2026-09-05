@@ -2,10 +2,10 @@ package me.nikhilchaudhari.library.internal
 
 import androidx.compose.ui.graphics.Color
 import me.nikhilchaudhari.library.NeuPerformanceConfig
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
-import org.junit.After
 import org.junit.Test
 
 class NeuShadowCacheKeyTest {
@@ -53,20 +53,15 @@ class NeuShadowCacheKeyTest {
     }
 
     @Test
-    fun `elevation is quantized to half-pixel buckets so nearby values share a key`() {
-        assertEquals(key(elevation = 6.00f), key(elevation = 6.10f))
-        assertEquals(key(elevation = 6.00f), key(elevation = 5.90f))
+    fun `elevation retains exact float identity`() {
+        assertNotEquals(key(elevation = 6.00f), key(elevation = 6.10f))
+        assertNotEquals(key(elevation = 6.10f), key(elevation = 6.1001f))
     }
 
     @Test
-    fun `elevation crossing a half-pixel boundary changes the key`() {
-        assertNotEquals(key(elevation = 6.0f), key(elevation = 6.5f))
-    }
-
-    @Test
-    fun `stroke width is quantized the same way as elevation`() {
-        assertEquals(key(stroke = 5.0f), key(stroke = 5.2f))
-        assertNotEquals(key(stroke = 5.0f), key(stroke = 5.6f))
+    fun `stroke width retains exact float identity`() {
+        assertNotEquals(key(stroke = 5.0f), key(stroke = 5.2f))
+        assertNotEquals(key(stroke = 5.2f), key(stroke = 5.2001f))
     }
 
     @Test
