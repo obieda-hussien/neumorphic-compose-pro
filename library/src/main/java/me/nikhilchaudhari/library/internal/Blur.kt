@@ -3,7 +3,6 @@ package me.nikhilchaudhari.library.internal
 import android.content.Context
 import android.graphics.*
 import android.os.Build
-import android.renderscript.*
 import android.util.DisplayMetrics
 import java.lang.ref.WeakReference
 import kotlin.math.roundToInt
@@ -23,14 +22,18 @@ data class BlurConfig(
 }
 
 /** Blur implementation shared by Compose and XML/View adapters. */
-@Suppress("DEPRECATION")
 class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
 
-    private val contextRef = WeakReference(context.applicationContext ?: context)
     private val stateLock = Any()
-    private var rs: RenderScript? = null
-    private var blurScript: ScriptIntrinsicBlur? = null
+    private val contextRef = WeakReference(context.applicationContext ?: context)
     private var released = false
+    private val blurEngine: BlurEngine = synchronized(stateLock) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            StackBlurEngine()
+        } else {
+            RenderScriptBlurEngine(contextRef.get() ?: context, stateLock)
+        }
+    }
 
     private val workingBitmapPool = mutableMapOf<Long, Bitmap>()
 
@@ -61,21 +64,12 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         }
     }
 
-    /**
-     * Eagerly initializes the legacy RenderScript backend on API < 31.
-     * On API 31+ the StackBlur path needs no persistent graphics context.
-     */
+    /** Eagerly initializes the selected blur backend when it has persistent state. */
     fun warmUp() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return
-
         synchronized(stateLock) {
-            if (released || rs != null) return
-            val context = contextRef.get() ?: return
-            val renderScript = RenderScript.create(context)
-            val script = ScriptIntrinsicBlur.create(renderScript, Element.U8_4(renderScript))
-            rs = renderScript
-            blurScript = script
+            if (released) return
         }
+        blurEngine.warmUp()
     }
 
     fun blur(
@@ -117,14 +111,10 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
 
         val scaledRadius = (blurConfig.radius / sampling).coerceIn(1, BlurConfig.MAX_RADIUS)
 
-        val blurBitmap: Bitmap? = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                bitmap.stackBlur(scaledRadius)
-            } else {
-                blurWithRenderScript(bitmap, scaledRadius)
-            }
-        } catch (e: Exception) {
-            bitmap.stackBlur(scaledRadius)
+        val blurBitmap = try {
+            blurEngine.blur(bitmap, scaledRadius)
+        } catch (_: Exception) {
+            StackBlurEngine().blur(bitmap, scaledRadius)
         }
 
         if (blurBitmap == null) {
@@ -149,85 +139,18 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         return result
     }
 
-    private fun blurWithRenderScript(bitmap: Bitmap, radius: Int): Bitmap? {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            return bitmap.stackBlur(radius)
-        }
-        val context = contextRef.get() ?: return bitmap.stackBlur(radius)
-
-        return synchronized(stateLock) {
-            if (released) return@synchronized null
-
-            val renderScript = rs ?: RenderScript.create(context).also { rs = it }
-            val script = blurScript
-                ?: ScriptIntrinsicBlur.create(renderScript, Element.U8_4(renderScript)).also { blurScript = it }
-
-            try {
-                val (input, output) = allocationsFor(renderScript, bitmap)
-                input.copyFrom(bitmap)
-                script.setInput(input)
-                script.setRadius(radius.coerceIn(1, 25).toFloat())
-                script.forEach(output)
-                output.copyTo(bitmap)
-                bitmap
-            } catch (e: RSRuntimeException) {
-                resetRenderScriptResourcesLocked()
-                bitmap.stackBlur(radius)
-            }
-        }
-    }
-
-    // Small, size-bounded LRU cache of (input, output) Allocation pairs.
-    // Access-order is enabled so frequently reused dimensions stay hot.
-    private val allocationsBySize =
-        LinkedHashMap<Pair<Int, Int>, Pair<Allocation, Allocation>>(16, 0.75f, true)
-
-    private fun allocationsFor(renderScript: RenderScript, bitmap: Bitmap): Pair<Allocation, Allocation> {
-        val key = bitmap.width to bitmap.height
-        allocationsBySize[key]?.let { return it }
-
-        if (allocationsBySize.size >= MAX_CACHED_ALLOCATION_SIZES) {
-            val oldestKey = allocationsBySize.keys.firstOrNull()
-            oldestKey?.let { allocationsBySize.remove(it) }?.let { (input, output) ->
-                input.destroy()
-                output.destroy()
-            }
-        }
-
-        val input = Allocation.createFromBitmap(
-            renderScript, bitmap, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT
-        )
-        val output = Allocation.createTyped(renderScript, input.type)
-        val pair = input to output
-        allocationsBySize[key] = pair
-        return pair
-    }
-
-    private fun resetRenderScriptResourcesLocked() {
-        allocationsBySize.values.forEach { (input, output) ->
-            input.destroy()
-            output.destroy()
-        }
-        allocationsBySize.clear()
-        blurScript?.destroy()
-        blurScript = null
-        rs?.destroy()
-        rs = null
-    }
-
     fun release() {
         synchronized(stateLock) {
             if (released) return
-            resetRenderScriptResourcesLocked()
+            released = true
+            blurEngine.release()
             workingBitmapPool.values.forEach { if (!it.isRecycled) it.recycle() }
             workingBitmapPool.clear()
-            released = true
         }
     }
 
     companion object {
         private const val MAX_POOLED_BITMAPS = 8
-        private const val MAX_CACHED_ALLOCATION_SIZES = 8
 
         fun radiusForDensity(densityScale: Float): Int =
             BlurConfig.MAX_RADIUS.coerceAtMost((densityScale * 10).roundToInt())
