@@ -8,9 +8,6 @@ import android.util.DisplayMetrics
 import java.lang.ref.WeakReference
 import kotlin.math.roundToInt
 
-/**
- * Holds required data for blur operation
- */
 data class BlurConfig(
     val width: Int,
     val height: Int,
@@ -20,22 +17,11 @@ data class BlurConfig(
 ) {
     companion object {
         const val MAX_RADIUS = 25
-
-        /**
-         * Shadows are blurred, so downsampling before the blur pass is visually
-         * lossless (the blur itself discards fine detail) but cuts the number of
-         * pixels the CPU has to touch by [DEFAULT_SAMPLING]^2. This is one of the
-         * biggest single levers on CPU/battery cost for this library, since the
-         * blur pass runs on the CPU on all API levels.
-         */
         const val DEFAULT_SAMPLING = 2
     }
 }
 
-/**
- * Blur implementation with a **persistent** RenderScript context (API < 31) and
- * downsampled StackBlur (API 31+, since RenderScript is deprecated there).
- */
+/** Blur implementation shared by Compose and XML/View adapters. */
 @Suppress("DEPRECATION")
 class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
 
@@ -73,7 +59,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         radius: Int = defaultBlurRadius,
         sampling: Int = BlurConfig.DEFAULT_SAMPLING
     ): Bitmap? {
-        if (released) return null
+        if (released || source.isRecycled || source.width <= 0 || source.height <= 0) return null
         val blurConfig = BlurConfig(
             width = source.width,
             height = source.height,
@@ -85,8 +71,11 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
 
     private fun blur(source: Bitmap, blurConfig: BlurConfig): Bitmap? {
         val sampling = blurConfig.sampling.coerceAtLeast(1)
-        val width = (blurConfig.width / sampling).coerceAtLeast(1)
-        val height = (blurConfig.height / sampling).coerceAtLeast(1)
+
+        // Use ceil division so the final source row/column are never clipped
+        // when source dimensions are not exact multiples of the sampling factor.
+        val width = ((blurConfig.width + sampling - 1) / sampling).coerceAtLeast(1)
+        val height = ((blurConfig.height + sampling - 1) / sampling).coerceAtLeast(1)
         val bitmap = obtainWorkingBitmap(width, height)
 
         Canvas(bitmap).run {
