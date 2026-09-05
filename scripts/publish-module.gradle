@@ -1,67 +1,134 @@
-apply plugin: 'maven-publish'
-apply plugin: 'signing'
+/*
+ * Common Maven publishing configuration for Android library modules.
+ *
+ * JitPack:
+ *   - publishes to MavenLocal internally
+ *   - does NOT require GPG signing
+ *
+ * Maven Central:
+ *   - signing is enabled only when a complete signing configuration exists
+ */
 
-task androidSourcesJar(type: Jar) {
+apply plugin: 'maven-publish'
+
+
+/*
+ * Sources JAR
+ */
+tasks.register('androidSourcesJar', Jar) {
+
     archiveClassifier.set('sources')
-    if (project.plugins.findPlugin("com.android.library")) {
+
+    if (project.plugins.findPlugin('com.android.library')) {
 
         from android.sourceSets.main.java.srcDirs
         from android.sourceSets.main.kotlin.srcDirs
+
     } else {
 
         from sourceSets.main.java.srcDirs
         from sourceSets.main.kotlin.srcDirs
     }
 }
+
+
 artifacts {
-    archives androidSourcesJar
+    archives tasks.named('androidSourcesJar')
 }
 
+
+/*
+ * Basic publication coordinates
+ */
 group = PUBLISH_GROUP_ID
 version = PUBLISH_VERSION
 
+
 afterEvaluate {
+
     publishing {
+
         publications {
+
             release(MavenPublication) {
 
-                groupId PUBLISH_GROUP_ID
-                artifactId PUBLISH_ARTIFACT_ID
-                version PUBLISH_VERSION
+                groupId = PUBLISH_GROUP_ID
+                artifactId = PUBLISH_ARTIFACT_ID
+                version = PUBLISH_VERSION
 
-                if (project.plugins.findPlugin("com.android.library")) {
+                /*
+                 * Android AAR
+                 */
+                if (project.plugins.findPlugin('com.android.library')) {
+
                     from components.release
+
                 } else {
-                    artifact("$buildDir/libs/${project.getName()}-${version}.jar")
+
+                    artifact(
+                            "$buildDir/libs/${project.getName()}-${version}.jar"
+                    )
                 }
 
-                artifact androidSourcesJar
-//                artifact javadocJar
+                /*
+                 * Sources
+                 */
+                artifact tasks.named('androidSourcesJar')
 
+
+                /*
+                 * Maven POM metadata
+                 */
                 pom {
+
                     name = 'ComposeNeumorphism'
-                    description = 'A Neumorphism UI library for Jetpack Compose - obieda-hussien/neumorphic-compose-pro fork'
-                    url = 'https://github.com/obieda-hussien/neumorphic-compose-pro'
+
+                    description =
+                            'A Neumorphism UI library for Jetpack Compose and Android Views.'
+
+                    url =
+                            'https://github.com/obieda-hussien/neumorphic-compose-pro'
+
+
                     licenses {
+
                         license {
+
                             name = 'Apache License, Version 2.0'
-                            url = 'https://github.com/obieda-hussien/neumorphic-compose-pro/blob/main/LICENSE'
+
+                            url =
+                                    'https://www.apache.org/licenses/LICENSE-2.0.txt'
                         }
                     }
+
+
                     developers {
+
                         developer {
+
                             id = 'obieda-hussien'
-                            name = 'obieda-hussien'
-                            // Fill in a real contact email here before actually
-                            // running ./gradlew publish against Maven Central -
-                            // left blank rather than guessed.
-                            email = ''
+
+                            name = 'Obieda Hussien'
+
+                            /*
+                             * Do not invent a personal email here.
+                             * Add your real public OSS email before
+                             * publishing to Maven Central.
+                             */
                         }
                     }
+
+
                     scm {
-                        connection = 'scm:git:git://github.com/obieda-hussien/neumorphic-compose-pro.git'
-                        developerConnection = 'scm:git:ssh://github.com/obieda-hussien/neumorphic-compose-pro.git'
-                        url = 'https://github.com/obieda-hussien/neumorphic-compose-pro'
+
+                        connection =
+                                'scm:git:git://github.com/obieda-hussien/neumorphic-compose-pro.git'
+
+                        developerConnection =
+                                'scm:git:ssh://github.com/obieda-hussien/neumorphic-compose-pro.git'
+
+                        url =
+                                'https://github.com/obieda-hussien/neumorphic-compose-pro'
                     }
                 }
             }
@@ -69,10 +136,65 @@ afterEvaluate {
     }
 }
 
-ext["signing.keyId"] = rootProject.ext["signing.keyId"]
-ext["signing.password"] = rootProject.ext["signing.password"]
-ext["signing.secretKeyRingFile"] = rootProject.ext["signing.secretKeyRingFile"]
 
-signing {
-    sign publishing.publications
+/*
+ * OPTIONAL GPG SIGNING
+ *
+ * Gradle's signing plugin requires:
+ *   signing.keyId
+ *   signing.password
+ *   signing.secretKeyRingFile
+ *
+ * We enable it ONLY if all three values exist and the key file exists.
+ *
+ * Therefore:
+ *
+ * JitPack:
+ *   no signing credentials
+ *   => no signing plugin
+ *   => no signReleasePublication task
+ *
+ * Maven Central:
+ *   credentials supplied
+ *   => signing plugin enabled
+ *   => publication is signed
+ */
+def signingKeyId =
+        rootProject.ext.has('signingKeyId')
+                ? rootProject.ext.signingKeyId.toString().trim()
+                : ''
+
+def signingPassword =
+        rootProject.ext.has('signingPassword')
+                ? rootProject.ext.signingPassword.toString().trim()
+                : ''
+
+def signingSecretKeyRingFile =
+        rootProject.ext.has('signingSecretKeyRingFile')
+                ? rootProject.ext.signingSecretKeyRingFile.toString().trim()
+                : ''
+
+boolean hasValidSigningConfiguration =
+        !signingKeyId.isEmpty() &&
+        !signingPassword.isEmpty() &&
+        !signingSecretKeyRingFile.isEmpty() &&
+        project.file(signingSecretKeyRingFile).exists()
+
+
+if (hasValidSigningConfiguration) {
+
+    apply plugin: 'signing'
+
+    signing {
+
+        def signingProperties = [
+                keyId: signingKeyId,
+                password: signingPassword,
+                secretKeyRingFile: signingSecretKeyRingFile
+        ]
+
+        signatory = signingProperties
+
+        sign publishing.publications
+    }
 }
