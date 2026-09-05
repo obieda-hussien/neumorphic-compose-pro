@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelectable
 import androidx.compose.ui.test.assertIsSelected
@@ -18,7 +20,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.math.abs
 import org.junit.Assert.assertTrue
@@ -113,16 +114,16 @@ class NeuComponentsInteractionTest {
                 NeuSlider(
                     value = value,
                     onValueChange = { value = it },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("slider")
+                        .semantics(mergeDescendants = true) {}
                 )
             }
         }
 
-        composeRule.onNodeWithTag("slider", useUnmergedTree = true).assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
-
-        composeRule.onAllNodesWithTag("slider", useUnmergedTree = true)
-        
-        composeRule.onNodeWithTag("slider", useUnmergedTree = true)
+        composeRule.onNodeWithTag("slider")
+            .assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
             .performTouchInput {
                 click(centerRight)
             }
@@ -131,6 +132,9 @@ class NeuComponentsInteractionTest {
             assertTrue(value > 0.8f)
             assertTrue(value <= 1f)
         }
+
+        composeRule.onNodeWithTag("slider")
+            .assertRangeInfoEquals(ProgressBarRangeInfo(value, 0f..1f))
     }
 
     @Test
