@@ -12,8 +12,8 @@ android {
         applicationId 'me.nikhilchaudhari.neumorphiccompose'
         minSdk 24
         targetSdk 36
-        versionCode 5
-        versionName '4.0.0'
+        versionCode 6
+        versionName '4.0.1'
         testInstrumentationRunner = 'androidx.test.runner.AndroidJUnitRunner'
 
         vectorDrawables {
@@ -31,8 +31,6 @@ android {
             )
         }
 
-        // Production-like variant for Macrobenchmark. It is non-debuggable,
-        // optimized like release, and signed with the debug key for local/CI runs.
         benchmark {
             initWith release
             signingConfig signingConfigs.debug
@@ -76,7 +74,6 @@ dependencies {
     implementation libs.androidx.lifecycle.viewmodel.compose
     implementation libs.androidx.activity.compose
     implementation project(':library')
-
     implementation libs.androidx.profileinstaller
 
     testImplementation libs.junit
