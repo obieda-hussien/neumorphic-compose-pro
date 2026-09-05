@@ -1,24 +1,18 @@
 [versions]
+
 # Build tooling
-agp = "8.13.0"
+agp = "8.13.2"
 kotlin = "2.3.0"
 
 # Compose
-# NOTE: compose-bom 2026.08.00 (Compose 1.12.0) requires compileSdk 37 + AGP
-# 9.1.0+, which conflicts with this project staying on AGP 8.13.x (see the
-# "Configure AGP 9" discussion in README - deliberately deferred). 2026.04.01
-# is Compose 1.11, the last BOM line before that compileSdk 37 requirement,
-# confirmed compatible with compileSdk 35/36 + AGP 8.13 by actual CI.
+# Compose 1.11 / BOM 2026.04.01 is the stable line
+# compatible with this project staying on compileSdk 36 / AGP 8.13.x.
 composeBom = "2026.04.01"
 
-# AndroidX - shared across library / library-views / app, so a version bump
-# here applies everywhere at once instead of drifting per-module.
+# AndroidX
 coreKtx = "1.15.0"
 appcompat = "1.8.0"
 material = "1.14.0"
-# NOTE: lifecycle 2.11.0 (specifically since 2.11.0-beta01) also requires
-# compileSdk 37 - same root cause as the compose-bom/material3 issue above.
-# 2.10.0 is the last line before that.
 lifecycle = "2.10.0"
 activityCompose = "1.12.3"
 profileinstaller = "1.4.1"
@@ -29,42 +23,146 @@ androidxTestExtJunit = "1.2.1"
 espressoCore = "3.6.1"
 
 # Publishing
-nexusPublish = "1.1.0"
+nexusPublish = "2.0.0"
+
 
 [libraries]
-# AndroidX core
-androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 
-# Compose
-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
-androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
-androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
-androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
-androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
-androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
-androidx-compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
-# No version.ref here - let the BOM (above) pin the material3 version that's
-# actually compatible with it, instead of an independently-pinned alpha that
-# can silently drift ahead of what the rest of the BOM supports (this is
-# exactly how it broke before: material3 1.5.0-alpha26 required compileSdk 37
-# on its own, independent of - and incompatible with - the BOM/AGP combo here).
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
-androidx-compose-animation = { group = "androidx.compose.animation", name = "animation" }
-androidx-compose-animation-core = { group = "androidx.compose.animation", name = "animation-core" }
-androidx-compose-animation-graphics = { group = "androidx.compose.animation", name = "animation-graphics" }
+# AndroidX
+androidx-core-ktx = {
+    group = "androidx.core",
+    name = "core-ktx",
+    version.ref = "coreKtx"
+}
+
+androidx-appcompat = {
+    group = "androidx.appcompat",
+    name = "appcompat",
+    version.ref = "appcompat"
+}
+
+material = {
+    group = "com.google.android.material",
+    name = "material",
+    version.ref = "material"
+}
+
+androidx-profileinstaller = {
+    group = "androidx.profileinstaller",
+    name = "profileinstaller",
+    version.ref = "profileinstaller"
+}
+
+
+# Compose BOM
+compose-bom = {
+    group = "androidx.compose",
+    name = "compose-bom",
+    version.ref = "composeBom"
+}
+
+androidx-compose-ui = {
+    group = "androidx.compose.ui",
+    name = "ui"
+}
+
+androidx-compose-ui-graphics = {
+    group = "androidx.compose.ui",
+    name = "ui-graphics"
+}
+
+androidx-compose-ui-tooling = {
+    group = "androidx.compose.ui",
+    name = "ui-tooling"
+}
+
+androidx-compose-ui-tooling-preview = {
+    group = "androidx.compose.ui",
+    name = "ui-tooling-preview"
+}
+
+androidx-compose-ui-test-junit4 = {
+    group = "androidx.compose.ui",
+    name = "ui-test-junit4"
+}
+
+androidx-compose-ui-test-manifest = {
+    group = "androidx.compose.ui",
+    name = "ui-test-manifest"
+}
+
+androidx-compose-foundation = {
+    group = "androidx.compose.foundation",
+    name = "foundation"
+}
+
+androidx-compose-material-icons-core = {
+    group = "androidx.compose.material",
+    name = "material-icons-core"
+}
+
+androidx-compose-material3 = {
+    group = "androidx.compose.material3",
+    name = "material3"
+}
+
+androidx-compose-animation = {
+    group = "androidx.compose.animation",
+    name = "animation"
+}
+
+androidx-compose-animation-core = {
+    group = "androidx.compose.animation",
+    name = "animation-core"
+}
+
+androidx-compose-animation-graphics = {
+    group = "androidx.compose.animation",
+    name = "animation-graphics"
+}
+
 
 # Lifecycle
-androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
-androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
-androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
-androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-lifecycle-runtime-ktx = {
+    group = "androidx.lifecycle",
+    name = "lifecycle-runtime-ktx",
+    version.ref = "lifecycle"
+}
+
+androidx-lifecycle-runtime-compose = {
+    group = "androidx.lifecycle",
+    name = "lifecycle-runtime-compose",
+    version.ref = "lifecycle"
+}
+
+androidx-lifecycle-viewmodel-compose = {
+    group = "androidx.lifecycle",
+    name = "lifecycle-viewmodel-compose",
+    version.ref = "lifecycle"
+}
+
+androidx-activity-compose = {
+    group = "androidx.activity",
+    name = "activity-compose",
+    version.ref = "activityCompose"
+}
+
 
 # Testing
-junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
-androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+junit = {
+    group = "junit",
+    name = "junit",
+    version.ref = "junit"
+}
+
+androidx-test-ext-junit = {
+    group = "androidx.test.ext",
+    name = "junit",
+    version.ref = "androidxTestExtJunit"
+}
+
+androidx-test-espresso-core = {
+    group = "androidx.test.espresso",
+    name = "espresso-core",
+    version.ref = "espressoCore"
+}
