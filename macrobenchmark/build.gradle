@@ -1,0 +1,27 @@
+plugins {
+    id 'com.android.test'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'me.nikhilchaudhari.neumorphiccompose.macrobenchmark'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 36
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    targetProjectPath ':app'
+
+    buildTypes {
+        benchmark {
+            matchingFallbacks = ['release']
+        }
+    }
+}
+
+dependencies {
+    implementation libs.androidx.benchmark.macro.junit4
+}
