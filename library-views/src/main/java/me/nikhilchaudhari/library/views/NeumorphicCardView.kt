@@ -14,28 +14,6 @@ import kotlin.math.roundToInt
 
 /**
  * A CardView with neumorphic styling for traditional Android Views/XML layouts
- * 
- * Usage in XML:
- * ```xml
- * <me.nikhilchaudhari.library.views.NeumorphicCardView
- *     android:layout_width="match_parent"
- *     android:layout_height="wrap_content"
- *     app:neuShape="punched"
- *     app:neuCornerRadius="16dp"
- *     app:neuElevation="8dp">
- *     
- *     <!-- Your content here -->
- *     <LinearLayout ... />
- *     
- * </me.nikhilchaudhari.library.views.NeumorphicCardView>
- * ```
- * 
- * Usage in Java:
- * ```java
- * NeumorphicCardView cardView = new NeumorphicCardView(context);
- * cardView.setNeuShapeType(NeuShapeType.POT);
- * cardView.setNeuCornerRadius(dpToPx(16));
- * ```
  */
 class NeumorphicCardView @JvmOverloads constructor(
     context: Context,
@@ -43,65 +21,74 @@ class NeumorphicCardView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
-    // Neumorphic properties
+    private var paddingInitialized = false
+    private var applyingShadowPadding = false
+    private var basePaddingLeft = 0
+    private var basePaddingTop = 0
+    private var basePaddingRight = 0
+    private var basePaddingBottom = 0
+
     var neuShapeType: NeuShapeType = NeuShapeType.PUNCHED
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuCornerType: NeuCornerType = NeuCornerType.ROUNDED
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuCornerRadius: Float = 16f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuLightShadowColor: Int = Color.WHITE
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuDarkShadowColor: Int = Color.LTGRAY
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuElevation: Float = 8f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            updateShadowPadding()
+            markShadowDirty()
         }
 
     var neuStrokeWidth: Float = 6f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuInsetHorizontal: Float = 8f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            updateShadowPadding()
+            markShadowDirty()
         }
 
     var neuInsetVertical: Float = 8f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            updateShadowPadding()
+            markShadowDirty()
         }
 
     var neuLightSource: LightSource = LightSource.TOP_LEFT
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuBackgroundColor: Int = Color.parseColor("#ECEAEB")
@@ -110,21 +97,16 @@ class NeumorphicCardView @JvmOverloads constructor(
             invalidate()
         }
 
-    // Internal blur maker
     private var blurMaker: BlurMaker? = null
 
-    /** Test-only accessor - exposes the shared BlurMaker so tests can
-     *  verify it's the same instance across all neumorphic Views. */
     @androidx.annotation.VisibleForTesting
     fun blurMakerForTest(): BlurMaker? = blurMaker
 
-    // Cached bitmaps
     private var lightShadowBitmap: Bitmap? = null
     private var darkShadowBitmap: Bitmap? = null
     private var foregroundShadowBitmap: Bitmap? = null
     private var needsRedraw = true
 
-    // Paint objects
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         isFilterBitmap = true
@@ -133,51 +115,50 @@ class NeumorphicCardView @JvmOverloads constructor(
     init {
         blurMaker = NeuBlurMakerHolder.get(context)
 
-        // Parse XML attributes
         attrs?.let {
             val typedArray = context.obtainStyledAttributes(it, R.styleable.NeumorphicCardView)
-            
+
             neuShapeType = when (typedArray.getInt(R.styleable.NeumorphicCardView_neuShape, 0)) {
                 0 -> NeuShapeType.PUNCHED
                 1 -> NeuShapeType.PRESSED
                 2 -> NeuShapeType.POT
                 else -> NeuShapeType.PUNCHED
             }
-            
+
             neuCornerType = when (typedArray.getInt(R.styleable.NeumorphicCardView_neuCornerType, 0)) {
                 0 -> NeuCornerType.ROUNDED
                 1 -> NeuCornerType.OVAL
                 else -> NeuCornerType.ROUNDED
             }
-            
+
             neuCornerRadius = typedArray.getDimension(
                 R.styleable.NeumorphicCardView_neuCornerRadius, 16f.dpToPx()
             )
-            
+
             neuLightShadowColor = typedArray.getColor(
                 R.styleable.NeumorphicCardView_neuLightShadowColor, Color.WHITE
             )
-            
+
             neuDarkShadowColor = typedArray.getColor(
                 R.styleable.NeumorphicCardView_neuDarkShadowColor, Color.LTGRAY
             )
-            
+
             neuElevation = typedArray.getDimension(
                 R.styleable.NeumorphicCardView_neuElevation, 8f.dpToPx()
             )
-            
+
             neuStrokeWidth = typedArray.getDimension(
                 R.styleable.NeumorphicCardView_neuStrokeWidth, 6f.dpToPx()
             )
-            
+
             neuInsetHorizontal = typedArray.getDimension(
                 R.styleable.NeumorphicCardView_neuInsetHorizontal, 8f.dpToPx()
             )
-            
+
             neuInsetVertical = typedArray.getDimension(
                 R.styleable.NeumorphicCardView_neuInsetVertical, 8f.dpToPx()
             )
-            
+
             neuLightSource = when (typedArray.getInt(R.styleable.NeumorphicCardView_neuLightSource, 0)) {
                 0 -> LightSource.TOP_LEFT
                 1 -> LightSource.TOP_RIGHT
@@ -185,39 +166,62 @@ class NeumorphicCardView @JvmOverloads constructor(
                 3 -> LightSource.BOTTOM_RIGHT
                 else -> LightSource.TOP_LEFT
             }
-            
+
             neuBackgroundColor = typedArray.getColor(
                 R.styleable.NeumorphicCardView_neuBackgroundColor, Color.parseColor("#ECEAEB")
             )
-            
+
             typedArray.recycle()
         }
 
-        // Enable drawing
         setWillNotDraw(false)
-        
-        // Set layer type for proper shadow rendering
-        // Use hardware layer on modern devices, fall back to software for complex operations
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             setLayerType(LAYER_TYPE_HARDWARE, null)
         } else {
-            // Software layer required for blur effects on older devices
             setLayerType(LAYER_TYPE_SOFTWARE, null)
         }
 
-        // Add padding for shadows
-        setPadding(
-            (neuInsetHorizontal + neuElevation).toInt(),
-            (neuInsetVertical + neuElevation).toInt(),
-            (neuInsetHorizontal + neuElevation).toInt(),
-            (neuInsetVertical + neuElevation).toInt()
-        )
+        basePaddingLeft = paddingLeft
+        basePaddingTop = paddingTop
+        basePaddingRight = paddingRight
+        basePaddingBottom = paddingBottom
+        paddingInitialized = true
+        updateShadowPadding()
+    }
+
+    override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {
+        if (paddingInitialized && !applyingShadowPadding) {
+            basePaddingLeft = left
+            basePaddingTop = top
+            basePaddingRight = right
+            basePaddingBottom = bottom
+        }
+        super.setPadding(left, top, right, bottom)
+    }
+
+    private fun updateShadowPadding() {
+        if (!paddingInitialized) return
+
+        val shadowHorizontal = (neuInsetHorizontal + neuElevation).roundToInt()
+        val shadowVertical = (neuInsetVertical + neuElevation).roundToInt()
+
+        applyingShadowPadding = true
+        try {
+            super.setPadding(
+                basePaddingLeft + shadowHorizontal,
+                basePaddingTop + shadowVertical,
+                basePaddingRight + shadowHorizontal,
+                basePaddingBottom + shadowVertical
+            )
+        } finally {
+            applyingShadowPadding = false
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        needsRedraw = true
-        invalidateShadowBitmaps()
+        markShadowDirty()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -286,7 +290,7 @@ class NeumorphicCardView @JvmOverloads constructor(
     private fun drawForegroundShadows(canvas: Canvas) {
         val contentLeft = neuInsetHorizontal + neuElevation
         val contentTop = neuInsetVertical + neuElevation
-        
+
         foregroundShadowBitmap?.let {
             canvas.drawBitmap(it, contentLeft, contentTop, shadowPaint)
         }
@@ -294,7 +298,7 @@ class NeumorphicCardView @JvmOverloads constructor(
 
     private fun drawNeumorphicBackground(canvas: Canvas) {
         backgroundPaint.color = neuBackgroundColor
-        
+
         val contentLeft = neuInsetHorizontal + neuElevation
         val contentTop = neuInsetVertical + neuElevation
         val contentWidth = width - 2 * contentLeft
@@ -323,7 +327,7 @@ class NeumorphicCardView @JvmOverloads constructor(
 
     private fun generateShadowBitmaps() {
         invalidateShadowBitmaps()
-        
+
         val contentLeft = neuInsetHorizontal + neuElevation
         val contentTop = neuInsetVertical + neuElevation
         val contentWidth = (width - 2 * contentLeft).toInt()
@@ -331,18 +335,30 @@ class NeumorphicCardView @JvmOverloads constructor(
 
         if (contentWidth <= 0 || contentHeight <= 0) return
 
-        lightShadowBitmap = generateShadowBitmap(neuLightShadowColor, contentWidth, contentHeight)
-        darkShadowBitmap = generateShadowBitmap(neuDarkShadowColor, contentWidth, contentHeight)
-
-        if (neuShapeType == NeuShapeType.PRESSED || neuShapeType == NeuShapeType.POT) {
-            foregroundShadowBitmap = generateForegroundShadowBitmap(contentWidth, contentHeight)
+        when (neuShapeType) {
+            NeuShapeType.PUNCHED -> {
+                lightShadowBitmap = generateShadowBitmap(neuLightShadowColor, contentWidth, contentHeight)
+                darkShadowBitmap = generateShadowBitmap(neuDarkShadowColor, contentWidth, contentHeight)
+            }
+            NeuShapeType.PRESSED -> {
+                foregroundShadowBitmap = generateForegroundShadowBitmap(contentWidth, contentHeight)
+            }
+            NeuShapeType.POT -> {
+                lightShadowBitmap = generateShadowBitmap(neuLightShadowColor, contentWidth, contentHeight)
+                darkShadowBitmap = generateShadowBitmap(neuDarkShadowColor, contentWidth, contentHeight)
+                foregroundShadowBitmap = generateForegroundShadowBitmap(contentWidth, contentHeight)
+            }
         }
     }
 
-    private fun generateShadowBitmap(shadowColor: Int, contentWidth: Int, contentHeight: Int): Bitmap? {
+    private fun generateShadowBitmap(
+        shadowColor: Int,
+        contentWidth: Int,
+        contentHeight: Int
+    ): Bitmap? {
         val bitmapWidth = (contentWidth + neuElevation * 2).roundToInt()
         val bitmapHeight = (contentHeight + neuElevation * 2).roundToInt()
-        
+
         if (bitmapWidth <= 0 || bitmapHeight <= 0) return null
 
         val drawable = GradientDrawable().apply {
@@ -371,7 +387,6 @@ class NeumorphicCardView @JvmOverloads constructor(
 
         val bitmap = Bitmap.createBitmap(contentWidth, contentHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        
         val (lightOffsetX, lightOffsetY) = getLightOffset()
 
         val lightDrawable = GradientDrawable().apply {
@@ -439,6 +454,12 @@ class NeumorphicCardView @JvmOverloads constructor(
         foregroundShadowBitmap = null
     }
 
+    private fun markShadowDirty() {
+        needsRedraw = true
+        invalidateShadowBitmaps()
+        invalidate()
+    }
+
     private fun calculateDefaultBlurRadius(): Int {
         val density = resources.displayMetrics.density
         return min(25, (density * 10).roundToInt())
@@ -450,14 +471,11 @@ class NeumorphicCardView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        needsRedraw = true
         invalidateShadowBitmaps()
-        // Note: blurMaker is intentionally NOT released here - it is a shared,
-        // app-wide instance (see NeuBlurMakerHolder), and other neumorphic
-        // views/composables elsewhere on screen may still be using it.
     }
 
     fun refresh() {
-        needsRedraw = true
-        invalidate()
+        markShadowDirty()
     }
 }
