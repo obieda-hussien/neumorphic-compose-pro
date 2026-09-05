@@ -141,6 +141,15 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Enable KVM for Android Emulator
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            sudo gpasswd -a "$USER" kvm || true
+          fi
+          echo "KVM device:"
+          ls -l /dev/kvm 2>/dev/null || true
+
       - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -150,6 +159,7 @@ jobs:
           profile: pixel_2
           cores: 2
           ram-size: 3072M
+          emulator-boot-timeout: 900
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
           script: ./gradlew connectedDebugAndroidTest --no-daemon
@@ -184,6 +194,15 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Enable KVM for Android Emulator
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            sudo gpasswd -a "$USER" kvm || true
+          fi
+          echo "KVM device:"
+          ls -l /dev/kvm 2>/dev/null || true
+
       - name: Run Macrobenchmarks
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -193,6 +212,7 @@ jobs:
           profile: pixel_2
           cores: 2
           ram-size: 3072M
+          emulator-boot-timeout: 900
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
           script: ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest --no-daemon
