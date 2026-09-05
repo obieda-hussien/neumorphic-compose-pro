@@ -20,6 +20,44 @@
 - 🔆 **مصدر الإضاءة قابل للتخصيص** - TOP_LEFT، TOP_RIGHT، BOTTOM_LEFT، BOTTOM_RIGHT
 - 🔋 **رسم موفّر للطاقة** - الظلال بقت متخزنة (cached) ومشتركة بدل ما تتحسب من الصفر كل فريم - التفاصيل في قسم [الأداء](#الأداء)
 - ✨ **انتقالات crossfade سلسة** - تغيير الاختيار (الـ chips، الـ navigation bar) بيدوب بين الحالتين بدل ما يقفز فجأة - شوف [الجديد في 4.0.0](#الجديد-في-400)
+- 🎯 **عناصر تحكم تفاعلية** - الـ Slider والـ Switch والـ Checkbox والـ RadioButton في Compose بقوا بيعرضوا interaction وaccessibility semantics صحيحة
+- 🧪 **اختبارات Regression** - المشروع فيه تغطية لـ Compose UI، والـ blur المتوازي، وضغط الكاش، وMacrobenchmark
+
+## الجديد في 4.0.1
+
+`4.0.1` هو إصدار الـ hardening بعد 4.0.0. الـ API العام فضل ثابت، لكن تم تشديد صحة الرسم، والتفاعل، وإتاحة الوصول، والتزامن، وإدارة الذاكرة، وقياس الأداء.
+
+**تحسينات الـ Renderer والأداء:**
+- **مسار Blur مشترك وآمن للـ threads** - حالة `BlurMaker` المشتركة بقت محمية أثناء استدعاءات الـ blur المتوازية، مع recovery آمن لدورة حياة RenderScript.
+- **Backends واضحة للـ Blur** - مسار الـ blur بقى منفصل بين StackBlur وRenderScript، مع fallback آمن لـ StackBlur لو مسار RenderScript القديم فشل.
+- **Warm-up حقيقي** - `warmUp()` بقى يجهز موارد الـ blur الثقيلة فعليًا على API أقل من 31 بدل ما يلمس الـ singleton بس.
+- **LRU حقيقي للـ Allocation cache** - كاش RenderScript بقى access-order عشان الأحجام المستخدمة باستمرار تفضل جاهزة.
+- **مفاتيح Shadow cache دقيقة** - قيم الـ float وتمثيل الألوان بيتحفظوا بدقة كاملة لتجنب التصادمات الناتجة عن التقريب.
+- **الكاش واعي بجودة الـ Blur** - تغيير `NeuPerformanceConfig.blurDownsampling` ماينفعش يعيد استخدام bitmap متولّد بجودة مختلفة.
+- **التعامل مع ضغط الذاكرة** - `NeuShadowCache` المشترك بيستجيب لإشعارات ضغط الذاكرة من أندرويد وبيستعيد الميزانية المضبوطة بعد انتهاء الضغط.
+- **أبعاد Downsampling صحيحة** - استخدام أبعاد مبنية على ceil يحافظ على آخر جزء من الـ bitmap بدل ما يضيع.
+- **Allocations أقل عند cache hit** - ظلال Compose المخزنة بتتجنب إنشاء `GradientDrawable` بدون داعي.
+- **Invalidation للـ Views وقت التشغيل** - خصائص الظل في XML/Views بتعمل invalidation بشكل ثابت، بما في ذلك حالات detach/reattach.
+- **الحفاظ على Padding الكارت** - هندسة الظل بقت منفصلة عن padding المحتوى، فتغييرات الظل وقت التشغيل مش بتبوّظ padding المستخدم.
+- **`NeuAnimationType.NONE` فوري** - NONE بقى يطبق الحالة النهائية فورًا بدل spring شديد جدًا.
+
+**إصلاحات Compose للتفاعل وAccessibility:**
+- **`NeuSlider` تفاعلي فعلًا** - tap وdrag بيغيروا `onValueChange` بقيم محصورة بين 0 و1.
+- **إصلاح Hover** - `NeuButton` و`NeuIconButton` و`NeuFloatingActionButton` بقوا بيربطوا `hoverable` بنفس الـ interaction source اللي بيتجمع منه hover state.
+- **`NeuCircularProgress` indeterminate حقيقي** - `progress = null` بقى يعمل مؤشر متحرك فعلي بدل track ثابت.
+- **Semantics أفضل** - Switch وCheckbox وRadioButton بيستخدموا `toggleable`/`selectable` مع الحالة الصحيحة، والـ Slider/SeekBar بيعرضوا progress-range semantics.
+- **هندسة Progress آمنة** - قيم الـ progress والـ slider geometry بقت محصورة في النطاق الصحيح، حتى مع layouts بعرض صفر.
+- **هندسة Circular آمنة** - الـ circular progress بقى يستخدم أبعاد الرسم الفعلية بدل ما يحصل تعارض مع parameter اسمه `size`.
+
+**الاختبارات والـ CI:**
+- إضافة Compose UI regression tests للتفاعل مع الـ Slider وAccessibility semantics.
+- إضافة اختبارات للـ concurrent blur وضغط الكاش.
+- إضافة benchmark smoke test متكرر لقياس زمن الـ blur على الجهاز.
+- إضافة Macrobenchmark module مستقل لاختبارات startup/frame على build قريب من الإنتاج.
+- تطبيق الديمو بقى profileable لتشخيص Macrobenchmark.
+- الـ CI بقى مقسوم إلى jobs مستقلة للبناء، والـ unit tests، والـ lint، والـ instrumentation، والـ Macrobenchmark، مع تحديث إعدادات Gradle/Actions وإلغاء الـ runs القديمة المتعارضة.
+
+إصدار 4.0.1 بيحافظ على public component signatures. استخدام `neumorphic()` الحالي لا يحتاج أي migration.
 
 ## الجديد في 4.0.0
 
@@ -61,13 +99,13 @@ dependencyResolutionManagement {
 ### مكتبة Jetpack Compose
 
 ```kotlin
-implementation("com.github.obieda-hussien.neumorphic-compose-pro:library:4.0.0")
+implementation("com.github.obieda-hussien.neumorphic-compose-pro:library:4.0.1")
 ```
 
 ### مكتبة XML/Views
 
 ```kotlin
-implementation("com.github.obieda-hussien.neumorphic-compose-pro:library-views:4.0.0")
+implementation("com.github.obieda-hussien.neumorphic-compose-pro:library-views:4.0.1")
 ```
 
 > جاي من الـ artifact الأصلي `me.nikhilchaudhari:composeNeumorphism`؟ الـ API العام متغيرش نهائي - نفس الدوال ونفس الاستخدام، بس غيّر إحداثيات الاعتمادية (dependency coordinates) فوق وكل حاجة هتشتغل زي ما هي.
@@ -288,7 +326,7 @@ val darker = color.darken(0.2f)
 
 ## الأداء
 
-كل ظل نيومورفيزم عبارة عن bitmap متعمّلها blur، والنسخة الأصلية كانت بتعيد توليد الـ bitmap **من الصفر في كل استدعاء رسم**، بما فيها كل فريم في أنيميشن الضغط. النسخة دي (`4.0.0`) بتحافظ على نفس الشكل البصري بالظبط بس بتغيّر عدد مرات الشغل ده وتكلفته.
+كل ظل نيومورفيزم عبارة عن bitmap متعمّلها blur، والنسخة الأصلية كانت بتعيد توليد الـ bitmap **من الصفر في كل استدعاء رسم**، بما فيها كل فريم في أنيميشن الضغط. النسخة دي (`4.0.1`) بتحافظ على نفس الشكل البصري بالظبط بس بتغيّر عدد مرات الشغل ده وتكلفته وطريقة إدارته بأمان.
 
 ### السبب الحقيقي لاستنزاف البطارية والتهنيج عند الفتح
 
@@ -305,7 +343,12 @@ val darker = color.darken(0.2f)
 | إعادة استخدام نفس `ScriptIntrinsicBlur` بدل إنشاءه كل مرة | يقلل تكلفة مسار RenderScript المتبقية أكتر |
 | كاش LRU مشترك على مستوى التطبيق للظلال (`NeuShadowCache`)، بمفتاح مبني على الحجم/الـ elevation/الألوان/الشكل/مصدر الإضاءة | الكومبوننتس المتطابقة (عناصر list، أزرار في وضع الراحة) بتشارك نفس الـ bitmap بدل ما كل واحد يولّد بتاعه |
 | تقريب الـ elevation/الـ stroke لأقرب 0.5dp في مفتاح الكاش | أنيميشن ضغط بـ ~200 فريم بيتحول لعدد بسيط من الـ bitmaps المُعاد استخدامها بدل واحد لكل فريم - الفرق مش محسوس بصريًا |
-| الـ blur بقى بيشتغل على دقة مخفّضة (÷2) وبعدين يكبّر تاني | تقريبًا 4 أضعاف بكسلات أقل بيلمسها الـ CPU blur loop، من غير أي فرق ملحوظ في الجودة لأن الـ blur أصلاً بيفقد التفاصيل دي |
+| الـ blur بقى بيشتغل بدقة مخفّضة قابلة للضبط | بكسلات أقل بيلمسها الـ CPU blur loop مع الحفاظ على نفس الهدف البصري |
+| حالة الـ blur بقت thread-safe وlifecycle-safe | الاستدعاءات المتوازية مش بتتسابق على حالة RenderScript المشتركة، والفشل المؤقت بيعمل reset للـ backend بدل ما يبوّظ الـ singleton نهائيًا |
+| فصل backends الـ blur | StackBlur وRenderScript بقوا مسارات منفصلة مع fallback آمن |
+| Cache identity دقيقة + quality namespace | قيم الـ float والألوان محفوظة بدقة، و`blurDownsampling` بقى جزء من مفتاح الكاش |
+| Cache واعي بضغط الذاكرة | إشعارات ضغط الذاكرة بتقدر تفضّي/تعيد ميزانية الكاش المشترك بأمان |
+| Cache hits من غير shadow drawable allocation زائد | إعادة استخدام الظل المخزن في Compose ما بتعيدش إنشاء `GradientDrawable` بدون داعي |
 
 الـ API العام متغيرش خالص - `neumorphic()`، `animatedNeumorphic()`، `springNeumorphic()`، `expressiveNeumorphic()`، وكل الـ XML views شغالة زي ما هي بالظبط.
 
@@ -384,10 +427,10 @@ Modifier.neumorphic(
 ## المتطلبات
 
 - **الحد الأدنى للـ SDK**: 24 (أندرويد 7.0) لكل من `library` (Compose) و`library-views` (XML/Views)
-- **Compile/Target SDK**: 36 (أقصى حد موصى بيه من AGP 8.13.0 - التفاصيل تحت)
+- **Compile/Target SDK**: 36
 - **Compose BOM**: 2026.04.01 (Compose 1.11)
 - **Kotlin**: 2.3.0
-- **AGP**: 8.13.0 (متطلب وقت البناء للمساهمين في المكتبة فقط؛ مش قيد على مستخدمي المكتبة)
+- **AGP**: 8.13.2 (متطلب وقت البناء للمساهمين في المكتبة فقط؛ مش قيد على مستخدمي المكتبة)
 - **Java**: توافقية 17 (source/target)
 
 > **ليه مش أحدث BOM؟** Compose 1.12.0 (BOM 2026.08.00 وبعده) محتاج `compileSdk 37`، واللي بدوره محتاج AGP 9.1.0+. المشروع ده متعمد يفضل على AGP 8.13.x دلوقتي (شوف [خطط مستقبلية](#خطط-مستقبلية-roadmap))، فمثبّت على Compose 1.11 (BOM `2026.04.01`) - آخر نسخة قبل القفزة دي، وأتأكد من توافقها مع `compileSdk 36` + AGP 8.13 فعليًا عن طريق CI. كمان `material3` بقى مش مثبّت على alpha مستقل زي الأول لنفس السبب: تثبيت alpha لوحده محتاج `compileSdk 37` بمفرده (بغض النظر عن باقي الـ BOM) بالظبط ده اللي كسّر البناء قبل كده - سيبان الـ BOM يدير إصدار `material3` بيخلي كل حاجة على خط واحد متسق ومُختبر.
