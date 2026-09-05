@@ -1,122 +1,156 @@
 plugins {
     id 'com.android.library'
-    id 'kotlin-android'
-    id 'org.jetbrains.kotlin.plugin.compose' version '2.3.0'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
+
 ext {
-    // NOTE: this group/artifact ID is only used by the OPTIONAL Maven Central
-    // publish path (scripts/publish-module.gradle, `./gradlew publish`) -
-    // JitPack (what this repo's README actually documents) ignores this
-    // entirely and derives its own coordinates from the GitHub username,
-    // repo name, and this module's folder name instead. Kept in sync with
-    // library-views' own PUBLISH_GROUP_ID below.
     PUBLISH_GROUP_ID = 'io.github.obieda-hussien'
     PUBLISH_VERSION = '4.0.0'
     PUBLISH_ARTIFACT_ID = 'library'
 }
 
+
 apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
 
+
 android {
+
     namespace 'me.nikhilchaudhari.library'
+
     compileSdk 36
 
+
     defaultConfig {
+
         minSdk 24
         targetSdk 36
-        versionCode 5
-        versionName "4.0.0"
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles "consumer-rules.pro"
+        versionCode 5
+        versionName '4.0.0'
+
+        testInstrumentationRunner =
+                'androidx.test.runner.AndroidJUnitRunner'
+
+        consumerProguardFiles(
+                'consumer-rules.pro'
+        )
     }
 
+
     buildTypes {
+
         release {
+
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            proguardFiles(
+                    getDefaultProguardFile(
+                            'proguard-android-optimize.txt'
+                    ),
+                    'proguard-rules.pro'
+            )
         }
     }
 
-    // Publishes the release variant as a Maven/JitPack artifact. Without this,
-    // AGP warns "Android Publication 'release' Misconfigured for Variant
-    // 'release'" during every build, since the publish-module.gradle script
-    // (applied above) creates a publication that expects this to exist.
+
+    /*
+     * Publish the release Android variant.
+     *
+     * This keeps the Maven publication compatible with
+     * both JitPack and normal Maven publishing.
+     */
     publishing {
-        singleVariant("release") {}
+
+        singleVariant('release') {
+        }
     }
 
+
     compileOptions {
+
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 
+
     kotlinOptions {
+
         jvmTarget = '17'
     }
 
+
     buildFeatures {
+
         compose true
     }
 
+
     testOptions {
+
         unitTests {
-            // NeuPerformanceConfigTest exercises NeuShadowCache.resizeBudget(),
-            // which calls android.util.LruCache.resize() - a real Android
-            // framework method that the default unit-test android.jar stubs
-            // out (throws "not mocked"). returnDefaultValues makes such calls
-            // no-op/return-default instead of throwing, which is enough here
-            // since these tests only assert on NeuPerformanceConfig's own
-            // pure-Kotlin state, not on LruCache's internal behavior.
+
             returnDefaultValues = true
         }
     }
 }
 
-dependencies {
-    // Compose BOM - `api` so this version alignment propagates to consumers
-    // of the published AAR too, not just within this module.
-    api platform(libs.compose.bom)
 
+dependencies {
+
+    /*
+     * Compose BOM
+     */
+    api platform(
+            libs.compose.bom
+    )
+
+
+    /*
+     * AndroidX
+     */
     implementation libs.androidx.core.ktx
     implementation libs.androidx.appcompat
     implementation libs.material
-
-    // Installs this library's bundled baseline-prof.txt on the consuming
-    // app's device so ART can compile/verify the hot classes ahead of time
-    // instead of interpreting them on first use. See src/main/baseline-prof.txt.
     implementation libs.androidx.profileinstaller
 
-    // Compose UI - `api`, not `implementation`: this library's own public
-    // functions return `Modifier` and take `Color`/`Dp` parameters
-    // (Neumorphic.kt), so consumers need these types resolvable from just
-    // depending on this library. `implementation` would compile fine here
-    // but leave external JitPack consumers with "unresolved reference"
-    // errors unless they *also* separately declared compose-ui themselves.
+
+    /*
+     * Compose public API
+     */
     api libs.androidx.compose.ui
     api libs.androidx.compose.ui.graphics
+
     implementation libs.androidx.compose.ui.tooling.preview
     implementation libs.androidx.compose.foundation
 
-    // Material Design 3 - `api` for the same reason as compose-ui:
-    // NeuTheme.fromMaterial3ColorScheme(colorScheme: ColorScheme = ...) puts
-    // androidx.compose.material3.ColorScheme directly in this library's
-    // public API surface.
+
+    /*
+     * Material 3 is visible from the public API.
+     */
     api libs.androidx.compose.material3
 
-    // Animation - internal use only (springNeumorphic/animatedNeumorphic take
-    // plain Float/Int/the library's own NeuAnimationType enum, never expose
-    // androidx.compose.animation types directly), so implementation is correct.
+
+    /*
+     * Animation
+     */
     implementation libs.androidx.compose.animation
     implementation libs.androidx.compose.animation.core
     implementation libs.androidx.compose.animation.graphics
 
-    // Testing
+
+    /*
+     * Tests
+     */
     testImplementation libs.junit
+
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso.core
 
-    // Debug tooling
+
+    /*
+     * Debug tooling
+     */
     debugImplementation libs.androidx.compose.ui.tooling
 }
