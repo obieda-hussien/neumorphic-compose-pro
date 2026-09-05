@@ -109,3 +109,12 @@ internal object NeuShadowCache {
             append("ls").append(lightSource)
         }
     }
+
+    private fun Color.toArgbHex(): String {
+        val a = (alpha * 255).roundToInt()
+        val r = (red * 255).roundToInt()
+        val g = (green * 255).roundToInt()
+        val b = (blue * 255).roundToInt()
+        return String.format("%02x%02x%02x%02x", a, r, g, b)
+    }
+}
