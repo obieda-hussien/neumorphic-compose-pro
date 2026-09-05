@@ -8,7 +8,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelectable
 import androidx.compose.ui.test.assertIsSelected
@@ -117,13 +118,17 @@ class NeuComponentsInteractionTest {
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("slider")
-                        .semantics(mergeDescendants = true) {}
                 )
             }
         }
 
-        composeRule.onNodeWithTag("slider")
-            .assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
+        composeRule.onNode(
+            SemanticsMatcher.expectValue(
+                SemanticsProperties.ProgressBarRangeInfo,
+                ProgressBarRangeInfo(0f, 0f..1f)
+            ),
+            useUnmergedTree = true
+        )
             .performTouchInput {
                 click(centerRight)
             }
@@ -133,8 +138,13 @@ class NeuComponentsInteractionTest {
             assertTrue(value <= 1f)
         }
 
-        composeRule.onNodeWithTag("slider")
-            .assertRangeInfoEquals(ProgressBarRangeInfo(value, 0f..1f))
+        composeRule.onNode(
+            SemanticsMatcher.expectValue(
+                SemanticsProperties.ProgressBarRangeInfo,
+                ProgressBarRangeInfo(value, 0f..1f)
+            ),
+            useUnmergedTree = true
+        ).assertExists()
     }
 
     @Test
