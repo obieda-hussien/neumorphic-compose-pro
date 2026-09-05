@@ -1,34 +1,18 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-buildscript {
-    ext {
-        // NOTE: buildscript{} classpath resolution runs before the module-level
-        // version catalog (gradle/libs.versions.toml) is reliably usable at this
-        // scope in all Gradle versions, so these two are kept as plain literals
-        // rather than catalog references. Keep them in sync with the
-        // `agp`/`kotlin` entries in gradle/libs.versions.toml - that file is
-        // still the single source of truth for every other dependency version
-        // in this project (used from all four module build.gradle files).
-        agp_version = '8.13.0'
-        kotlin_version = '2.3.0'
-    }
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath "com.android.tools.build:gradle:$agp_version"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+// Top-level build file for NeumorphismCompose.
 
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
-    }
+plugins {
+    id 'com.android.application' version '8.13.2' apply false
+    id 'com.android.library' version '8.13.2' apply false
+
+    id 'org.jetbrains.kotlin.android' version '2.3.0' apply false
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.3.0' apply false
+
+    // Only used when publishing to Maven Central / Sonatype.
+    id 'io.github.gradle-nexus.publish-plugin' version '2.0.0'
 }
 
-plugins{
-    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
-}
 apply from: "${rootDir}/scripts/publish-root.gradle"
