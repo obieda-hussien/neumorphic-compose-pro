@@ -1,10 +1,12 @@
 /*
  * Root publishing configuration.
  *
- * Goals:
- * 1. Never require signing credentials during a normal JitPack build.
- * 2. Allow local Maven Central publishing when credentials are available.
- * 3. Never inject null/empty values into Gradle publishing credentials.
+ * JitPack:
+ * - no Sonatype authentication
+ * - no GPG signing requirement
+ *
+ * Maven Central:
+ * - enabled only when credentials are available
  */
 
 ext.signingKeyId = ''
@@ -15,19 +17,7 @@ ext.ossrhUsername = ''
 ext.ossrhPassword = ''
 ext.sonatypeStagingProfileId = ''
 
-/*
- * Read local.properties first.
- *
- * Example:
- *
- * signingKeyId=ABC123
- * signingPassword=secret
- * signingSecretKeyRingFile=/absolute/path/to/secring.gpg
- *
- * ossrhUsername=...
- * ossrhPassword=...
- * sonatypeStagingProfileId=...
- */
+
 File secretPropsFile = rootProject.file('local.properties')
 
 if (secretPropsFile.exists()) {
@@ -44,7 +34,6 @@ if (secretPropsFile.exists()) {
 
 } else {
 
-    // CI / JitPack environment variables.
     ext.ossrhUsername =
             System.getenv('OSSRH_USERNAME') ?: ''
 
@@ -65,18 +54,11 @@ if (secretPropsFile.exists()) {
 }
 
 
-/*
- * Maven Central / Sonatype configuration is enabled ONLY
- * when credentials actually exist.
- *
- * This is important for JitPack:
- * JitPack should build the libraries without trying to
- * authenticate to Sonatype or initialize a staging repository.
- */
 boolean hasSonatypeCredentials =
-        rootProject.ext.ossrhUsername.toString().trim() &&
-        rootProject.ext.ossrhPassword.toString().trim() &&
-        rootProject.ext.sonatypeStagingProfileId.toString().trim()
+        !ext.ossrhUsername.toString().trim().isEmpty() &&
+        !ext.ossrhPassword.toString().trim().isEmpty() &&
+        !ext.sonatypeStagingProfileId.toString().trim().isEmpty()
+
 
 if (hasSonatypeCredentials) {
 
@@ -87,13 +69,13 @@ if (hasSonatypeCredentials) {
             sonatype {
 
                 stagingProfileId =
-                        rootProject.ext.sonatypeStagingProfileId.toString().trim()
+                        ext.sonatypeStagingProfileId.toString().trim()
 
                 username =
-                        rootProject.ext.ossrhUsername.toString().trim()
+                        ext.ossrhUsername.toString().trim()
 
                 password =
-                        rootProject.ext.ossrhPassword.toString().trim()
+                        ext.ossrhPassword.toString().trim()
 
                 nexusUrl.set(
                         uri(
