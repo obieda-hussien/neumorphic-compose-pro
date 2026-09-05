@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertIsSelectable
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.assertRangeInfoEquals
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -45,14 +46,14 @@ class NeuComponentsInteractionTest {
             }
         }
 
-        onNodeWithTag("switch")
+        composeRule.onNodeWithTag("switch")
             .assertIsToggleable()
             .performClick()
 
         composeRule.runOnIdle {
             assertTrue(checked)
         }
-        onNodeWithTag("switch").assertIsOn()
+        composeRule.onNodeWithTag("switch").assertIsOn()
     }
 
     @Test
@@ -69,14 +70,14 @@ class NeuComponentsInteractionTest {
             }
         }
 
-        onNodeWithTag("checkbox")
+        composeRule.onNodeWithTag("checkbox")
             .assertIsToggleable()
             .performClick()
 
         composeRule.runOnIdle {
             assertTrue(checked)
         }
-        onNodeWithTag("checkbox").assertIsOn()
+        composeRule.onNodeWithTag("checkbox").assertIsOn()
     }
 
     @Test
@@ -93,14 +94,14 @@ class NeuComponentsInteractionTest {
             }
         }
 
-        onNodeWithTag("radio")
+        composeRule.onNodeWithTag("radio")
             .assertIsSelectable()
             .performClick()
 
         composeRule.runOnIdle {
             assertTrue(selected)
         }
-        onNodeWithTag("radio").assertIsSelected()
+        composeRule.onNodeWithTag("radio").assertIsSelected()
     }
 
     @Test
@@ -119,7 +120,7 @@ class NeuComponentsInteractionTest {
             }
         }
 
-        onNodeWithTag("slider")
+        composeRule.onNodeWithTag("slider")
             .assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
             .performTouchInput {
                 click(centerRight)
@@ -147,7 +148,7 @@ class NeuComponentsInteractionTest {
             }
         }
 
-        onNodeWithTag("slider-drag").performTouchInput {
+        composeRule.onNodeWithTag("slider-drag").performTouchInput {
             swipeRight()
         }
 
@@ -174,7 +175,7 @@ class NeuComponentsInteractionTest {
             }
         }
 
-        onNodeWithTag("slider-disabled").performTouchInput {
+        composeRule.onNodeWithTag("slider-disabled").performTouchInput {
             click(centerRight)
         }
 
