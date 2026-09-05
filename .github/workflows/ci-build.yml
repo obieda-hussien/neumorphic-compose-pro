@@ -123,7 +123,7 @@ jobs:
 
   instrumentation:
     name: Instrumented & Compose UI Tests
-    runs-on: ubuntu-latest
+    runs-on: macos-15-intel
 
     steps:
       - name: Checkout Repository
@@ -140,15 +140,6 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-
-      - name: Enable KVM for Android Emulator
-        run: |
-          if [ -e /dev/kvm ]; then
-            sudo chmod 666 /dev/kvm
-            sudo gpasswd -a "$USER" kvm || true
-          fi
-          echo "KVM device:"
-          ls -l /dev/kvm 2>/dev/null || true
 
       - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
@@ -176,7 +167,7 @@ jobs:
 
   benchmark:
     name: Macrobenchmark Smoke Tests
-    runs-on: ubuntu-latest
+    runs-on: macos-15-intel
 
     steps:
       - name: Checkout Repository
@@ -193,15 +184,6 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-
-      - name: Enable KVM for Android Emulator
-        run: |
-          if [ -e /dev/kvm ]; then
-            sudo chmod 666 /dev/kvm
-            sudo gpasswd -a "$USER" kvm || true
-          fi
-          echo "KVM device:"
-          ls -l /dev/kvm 2>/dev/null || true
 
       - name: Run Macrobenchmarks
         uses: reactivecircus/android-emulator-runner@v2
