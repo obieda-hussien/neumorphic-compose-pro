@@ -17,6 +17,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "NeumorphismCompose"
 
-include ':app'
-include ':library'
-include ':library-views'
+include(":app")
+include(":library")
+include(":library-views")
