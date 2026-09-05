@@ -7,6 +7,7 @@ import android.renderscript.*
 import android.util.DisplayMetrics
 import java.lang.ref.WeakReference
 import kotlin.math.roundToInt
+import me.nikhilchaudhari.library.NeuPerformanceConfig
 
 data class BlurConfig(
     val width: Int,
@@ -57,6 +58,23 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
                 }
                 workingBitmapPool[sizeKey(bitmap.width, bitmap.height)] = bitmap
             }
+        }
+    }
+
+    /**
+     * Eagerly initializes the legacy RenderScript backend on API < 31.
+     * On API 31+ the StackBlur path needs no persistent graphics context.
+     */
+    fun warmUp() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return
+
+        synchronized(stateLock) {
+            if (released || rs != null) return
+            val context = contextRef.get() ?: return
+            val renderScript = RenderScript.create(context)
+            val script = ScriptIntrinsicBlur.create(renderScript, Element.U8_4(renderScript))
+            rs = renderScript
+            blurScript = script
         }
     }
 
@@ -223,6 +241,8 @@ object NeuBlurMakerHolder {
 
     fun get(context: Context): BlurMaker {
         NeuShadowCache.registerMemoryPressureListener(context)
+        // Restore the caller's configured cache budget after an OS trim event.
+        NeuShadowCache.resizeBudget(NeuPerformanceConfig.shadowCacheBudgetKB)
         return instance ?: synchronized(this) {
             instance ?: BlurMaker(
                 context,
@@ -241,6 +261,6 @@ object NeuBlurMakerHolder {
     }
 
     fun warmUp(context: Context) {
-        get(context)
+        get(context).warmUp()
     }
 }
