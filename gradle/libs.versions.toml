@@ -1,12 +1,10 @@
 [versions]
 
-# Build tooling
+# Build tools
 agp = "8.13.2"
 kotlin = "2.3.0"
 
 # Compose
-# Compose 1.11 / BOM 2026.04.01 is the stable line
-# compatible with this project staying on compileSdk 36 / AGP 8.13.x.
 composeBom = "2026.04.01"
 
 # AndroidX
@@ -29,140 +27,41 @@ nexusPublish = "2.0.0"
 [libraries]
 
 # AndroidX
-androidx-core-ktx = {
-    group = "androidx.core",
-    name = "core-ktx",
-    version.ref = "coreKtx"
-}
-
-androidx-appcompat = {
-    group = "androidx.appcompat",
-    name = "appcompat",
-    version.ref = "appcompat"
-}
-
-material = {
-    group = "com.google.android.material",
-    name = "material",
-    version.ref = "material"
-}
-
-androidx-profileinstaller = {
-    group = "androidx.profileinstaller",
-    name = "profileinstaller",
-    version.ref = "profileinstaller"
-}
-
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+material = { module = "com.google.android.material:material", version.ref = "material" }
+androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
 
 # Compose BOM
-compose-bom = {
-    group = "androidx.compose",
-    name = "compose-bom",
-    version.ref = "composeBom"
-}
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 
-androidx-compose-ui = {
-    group = "androidx.compose.ui",
-    name = "ui"
-}
+# Compose
+androidx-compose-ui = { module = "androidx.compose.ui:ui" }
+androidx-compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
+androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+androidx-compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+androidx-compose-foundation = { module = "androidx.compose.foundation:foundation" }
+androidx-compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
 
-androidx-compose-ui-graphics = {
-    group = "androidx.compose.ui",
-    name = "ui-graphics"
-}
+# Material3 gets its version from the Compose BOM
+androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
 
-androidx-compose-ui-tooling = {
-    group = "androidx.compose.ui",
-    name = "ui-tooling"
-}
-
-androidx-compose-ui-tooling-preview = {
-    group = "androidx.compose.ui",
-    name = "ui-tooling-preview"
-}
-
-androidx-compose-ui-test-junit4 = {
-    group = "androidx.compose.ui",
-    name = "ui-test-junit4"
-}
-
-androidx-compose-ui-test-manifest = {
-    group = "androidx.compose.ui",
-    name = "ui-test-manifest"
-}
-
-androidx-compose-foundation = {
-    group = "androidx.compose.foundation",
-    name = "foundation"
-}
-
-androidx-compose-material-icons-core = {
-    group = "androidx.compose.material",
-    name = "material-icons-core"
-}
-
-androidx-compose-material3 = {
-    group = "androidx.compose.material3",
-    name = "material3"
-}
-
-androidx-compose-animation = {
-    group = "androidx.compose.animation",
-    name = "animation"
-}
-
-androidx-compose-animation-core = {
-    group = "androidx.compose.animation",
-    name = "animation-core"
-}
-
-androidx-compose-animation-graphics = {
-    group = "androidx.compose.animation",
-    name = "animation-graphics"
-}
-
+# Animation
+androidx-compose-animation = { module = "androidx.compose.animation:animation" }
+androidx-compose-animation-core = { module = "androidx.compose.animation:animation-core" }
+androidx-compose-animation-graphics = { module = "androidx.compose.animation:animation-graphics" }
 
 # Lifecycle
-androidx-lifecycle-runtime-ktx = {
-    group = "androidx.lifecycle",
-    name = "lifecycle-runtime-ktx",
-    version.ref = "lifecycle"
-}
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 
-androidx-lifecycle-runtime-compose = {
-    group = "androidx.lifecycle",
-    name = "lifecycle-runtime-compose",
-    version.ref = "lifecycle"
-}
-
-androidx-lifecycle-viewmodel-compose = {
-    group = "androidx.lifecycle",
-    name = "lifecycle-viewmodel-compose",
-    version.ref = "lifecycle"
-}
-
-androidx-activity-compose = {
-    group = "androidx.activity",
-    name = "activity-compose",
-    version.ref = "activityCompose"
-}
-
+# Activity
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 
 # Testing
-junit = {
-    group = "junit",
-    name = "junit",
-    version.ref = "junit"
-}
-
-androidx-test-ext-junit = {
-    group = "androidx.test.ext",
-    name = "junit",
-    version.ref = "androidxTestExtJunit"
-}
-
-androidx-test-espresso-core = {
-    group = "androidx.test.espresso",
-    name = "espresso-core",
-    version.ref = "espressoCore"
-}
+junit = { module = "junit:junit", version.ref = "junit" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
+androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espressoCore" }
