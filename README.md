@@ -364,6 +364,12 @@ Issues and pull requests are welcome. When reporting a rendering or performance 
 
 Apache License 2.0. See [LICENSE](LICENSE).
 
+## Current maintainer
+
+**Abdelrahman Hussein (Obieda)** is the current maintainer of this fork and is responsible for its ongoing development, maintenance, modernization, performance improvements, bug fixes, testing, and future releases.
+
+This project builds upon the original work of the upstream authors and contributors. Their work remains credited and preserved. This fork continues active development after a long period of limited maintenance, with a focus on modern Android, Jetpack Compose, performance, reliability, accessibility, and long-term maintainability.
+
 ## Credits
 
 - Stack Blur algorithm by Mario Klingemann
