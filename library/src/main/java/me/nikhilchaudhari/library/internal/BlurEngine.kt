@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package me.nikhilchaudhari.library.internal
 
 import android.content.Context
