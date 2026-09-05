@@ -18,6 +18,44 @@ A modern, flexible Neumorphism UI library for Android supporting both **Jetpack 
 - 🔆 **Configurable Light Source** - TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
 - 🔋 **Low-power rendering** - shadow bitmaps are cached and shared instead of being regenerated on every frame; see [Performance](#performance)
 - ✨ **Smooth crossfade transitions** - selection changes (chips, nav bar) fade between states instead of cutting abruptly; see [What's New in 4.0.0](#whats-new-in-400)
+- 🎯 **Interactive controls** - Compose Slider, Switch, Checkbox, and RadioButton expose correct interaction and accessibility semantics
+- 🧪 **Regression-tested** - Compose UI, concurrent blur, cache-pressure, and Macrobenchmark coverage are included in the project
+
+## What's New in 4.0.1
+
+`4.0.1` is the 4.0 hardening release. It keeps the public API stable while tightening rendering correctness, interaction behavior, accessibility, concurrency, memory handling, and performance validation.
+
+**Renderer and performance hardening:**
+- **Thread-safe shared blur pipeline** - the shared `BlurMaker` state is protected for concurrent blur calls and has lifecycle-safe RenderScript recovery.
+- **Explicit blur backends** - blur is routed through dedicated StackBlur and RenderScript engines, with StackBlur fallback when the legacy RenderScript path fails.
+- **Real warm-up** - `warmUp()` initializes the expensive pre-API 31 blur resources instead of only touching the singleton.
+- **True LRU allocation cache** - RenderScript allocations use access-order caching so frequently used sizes stay hot.
+- **Exact shadow-cache keys** - float render parameters and color encoding are preserved exactly to avoid approximate-key collisions.
+- **Blur-quality-aware cache keys** - changing `NeuPerformanceConfig.blurDownsampling` cannot reuse a bitmap generated with a different quality setting.
+- **Memory-pressure handling** - the process-wide shadow cache responds to Android memory-pressure callbacks and restores its configured budget after pressure passes.
+- **Correct downsampling dimensions** - ceil-based dimensions preserve bitmap edges instead of losing the last partial sampling region.
+- **Fewer cache-hit allocations** - cached Compose shadows avoid unnecessary `GradientDrawable` creation.
+- **Runtime View invalidation** - XML/View shadow state is invalidated consistently when shadow-affecting properties change, including detach/reattach flows.
+- **Card padding preservation** - shadow geometry is kept separate from user content padding so runtime shadow changes do not corrupt layout padding.
+- **Immediate `NeuAnimationType.NONE`** - NONE now applies the target state immediately instead of using a very stiff spring.
+
+**Compose interaction and accessibility fixes:**
+- **Interactive `NeuSlider`** - tap and drag gestures update `onValueChange` with clamped 0..1 values.
+- **Hover interaction fixes** - `NeuButton`, `NeuIconButton`, and `NeuFloatingActionButton` now attach `hoverable` to the same interaction source used for hover state.
+- **Indeterminate `NeuCircularProgress`** - `progress = null` now produces a real animated indeterminate indicator.
+- **Accessible controls** - Switch, Checkbox, and RadioButton use state-aware `toggleable`/`selectable` semantics, while Slider/SeekBar expose progress-range semantics.
+- **Safe progress geometry** - animated progress values and slider geometry are clamped to valid ranges, including zero-width layouts.
+- **Safe circular geometry** - circular progress uses the actual drawing bounds rather than the shadowed `size` parameter.
+
+**Testing and CI:**
+- Added Compose UI regression coverage for slider interaction and accessibility semantics.
+- Added concurrent blur and cache-pressure coverage.
+- Added a repeatable on-device blur timing smoke benchmark.
+- Added a dedicated Macrobenchmark module with startup/frame smoke tests against a production-like benchmark build.
+- Demo app is profileable for Macrobenchmark diagnostics.
+- CI is split into independent build, unit-test, lint, instrumentation, and Macrobenchmark jobs, with modern Gradle/action setup and cancellation of superseded runs.
+
+The 4.0.1 release keeps the public component signatures stable. Existing `neumorphic()` usage does not require migration.
 
 ## What's New in 4.0.0
 
@@ -100,13 +138,13 @@ dependencyResolutionManagement {
 ### Jetpack Compose Library
 
 ```kotlin
-implementation("com.github.obieda-hussien.neumorphic-compose-pro:library:4.0.0")
+implementation("com.github.obieda-hussien.neumorphic-compose-pro:library:4.0.1")
 ```
 
 ### XML/Views Library
 
 ```kotlin
-implementation("com.github.obieda-hussien.neumorphic-compose-pro:library-views:4.0.0")
+implementation("com.github.obieda-hussien.neumorphic-compose-pro:library-views:4.0.1")
 ```
 
 > Coming from the upstream `me.nikhilchaudhari:composeNeumorphism` artifact? The public API is unchanged - swap the dependency coordinates above and everything else keeps working as-is.
@@ -330,8 +368,8 @@ val darker = color.darken(0.2f)
 Neumorphism is expensive by nature - every soft shadow is a blurred bitmap, and
 the upstream implementation regenerated that bitmap **from scratch on every
 single draw call**, including every frame of a press animation. This fork
-(as of v4.0.0) keeps the exact same visual output but changes *how often*
-and *how expensively* that work happens.
+(as of v4.0.1) keeps the exact same visual output but changes *how often*
+and *how safely and efficiently* that work happens.
 
 ### What was actually draining the battery
 
@@ -363,7 +401,12 @@ and *how expensively* that work happens.
 | Persistent `ScriptIntrinsicBlur` reused across calls | Cuts remaining RenderScript-path overhead further |
 | Process-wide LRU shadow-bitmap cache (`NeuShadowCache`), keyed by size/elevation/colors/shape/light source | Identical components (list items, buttons at rest) share one bitmap instead of each generating their own |
 | Elevation/stroke quantized to 0.5dp buckets for cache keys | A ~200-frame spring animation collapses into a handful of reusable shadow bitmaps instead of 200 unique ones - imperceptible visually |
-| Blur now runs on a 2x-downsampled bitmap, then upscales | ~4x fewer pixels touched by the CPU blur loop, with no visible quality loss since blur already discards that detail |
+| Blur now runs at a configurable downsampled resolution | Fewer pixels are touched by the CPU blur loop while keeping the same visual intent |
+| Blur state is thread-safe and lifecycle-safe | Concurrent blur calls do not race shared RenderScript state, and transient failures reset the backend without permanently poisoning the singleton |
+| Explicit blur backend abstraction | StackBlur and legacy RenderScript paths are isolated, with safe fallback behavior |
+| Exact cache identity + quality namespace | Float/color identity is preserved and blur downsampling is part of the shadow-cache key |
+| Memory-pressure-aware cache | Android memory-pressure callbacks clear/rebudget the process-wide cache safely |
+| Cache hits avoid unnecessary shadow drawable allocation | Compose can reuse cached shadow bitmaps without recreating a `GradientDrawable` first |
 
 None of this changes the public API - `neumorphic()`, `animatedNeumorphic()`,
 `springNeumorphic()`, `expressiveNeumorphic()`, and the XML views all work
@@ -485,10 +528,10 @@ Modifier.neumorphic(
 ## Requirements
 
 - **Minimum SDK**: 24 (Android 7.0) for both `library` (Compose) and `library-views` (XML/Views)
-- **Compile/Target SDK**: 36 (the maximum recommended by AGP 8.13.0 - see note below)
+- **Compile/Target SDK**: 36
 - **Compose BOM**: 2026.04.01 (Compose 1.11)
 - **Kotlin**: 2.3.0
-- **AGP**: 8.13.0 (build-time requirement for contributors; does not constrain consumers)
+- **AGP**: 8.13.2 (build-time requirement for contributors; does not constrain consumers)
 - **Java**: 17 source/target compatibility
 
 > **Why not the newest Compose BOM?** Compose 1.12.0 (BOM 2026.08.00 and later)
