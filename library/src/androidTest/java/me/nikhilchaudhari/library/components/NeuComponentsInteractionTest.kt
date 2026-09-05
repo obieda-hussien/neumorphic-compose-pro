@@ -113,15 +113,16 @@ class NeuComponentsInteractionTest {
                 NeuSlider(
                     value = value,
                     onValueChange = { value = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("slider")
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
 
-        composeRule.onNodeWithTag("slider")
-            .assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
+        composeRule.onNodeWithTag("slider", useUnmergedTree = true).assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
+
+        composeRule.onAllNodesWithTag("slider", useUnmergedTree = true)
+        
+        composeRule.onNodeWithTag("slider", useUnmergedTree = true)
             .performTouchInput {
                 click(centerRight)
             }
