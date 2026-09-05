@@ -55,9 +55,7 @@ android {
 
 
     publishing {
-
-        singleVariant('release') {
-        }
+        singleVariant("release") {}
     }
 
 
@@ -69,7 +67,6 @@ android {
 
 
     kotlinOptions {
-
         jvmTarget = '17'
     }
 }
@@ -81,14 +78,7 @@ dependencies {
     implementation libs.androidx.appcompat
     implementation libs.material
 
-    /*
-     * This module exposes types from :library,
-     * therefore api is intentional.
-     */
-    api project(
-            path: ':library'
-    )
-
+    api project(':library')
 
     testImplementation libs.junit
 
