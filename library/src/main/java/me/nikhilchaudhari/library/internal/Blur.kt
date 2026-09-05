@@ -26,6 +26,7 @@ data class BlurConfig(
 class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
 
     private val contextRef = WeakReference(context.applicationContext ?: context)
+    private val stateLock = Any()
     private var rs: RenderScript? = null
     private var blurScript: ScriptIntrinsicBlur? = null
     private var released = false
@@ -35,9 +36,9 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     private fun sizeKey(width: Int, height: Int): Long =
         (width.toLong() shl 32) or (height.toLong() and 0xFFFFFFFFL)
 
-    private fun obtainWorkingBitmap(width: Int, height: Int): Bitmap {
+    private fun obtainWorkingBitmap(width: Int, height: Int): Bitmap = synchronized(stateLock) {
         val pooled = workingBitmapPool.remove(sizeKey(width, height))
-        return if (pooled != null && !pooled.isRecycled) {
+        if (pooled != null && !pooled.isRecycled) {
             pooled.eraseColor(android.graphics.Color.TRANSPARENT)
             pooled
         } else {
@@ -46,11 +47,16 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     }
 
     private fun releaseWorkingBitmap(bitmap: Bitmap) {
-        if (bitmap.isRecycled) return
-        if (workingBitmapPool.size < MAX_POOLED_BITMAPS) {
-            workingBitmapPool[sizeKey(bitmap.width, bitmap.height)] = bitmap
-        } else {
-            bitmap.recycle()
+        synchronized(stateLock) {
+            if (bitmap.isRecycled) return
+            if (released || workingBitmapPool.size >= MAX_POOLED_BITMAPS) {
+                bitmap.recycle()
+            } else {
+                workingBitmapPool[sizeKey(bitmap.width, bitmap.height)]?.let {
+                    if (!it.isRecycled) it.recycle()
+                }
+                workingBitmapPool[sizeKey(bitmap.width, bitmap.height)] = bitmap
+            }
         }
     }
 
@@ -59,7 +65,11 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         radius: Int = defaultBlurRadius,
         sampling: Int = BlurConfig.DEFAULT_SAMPLING
     ): Bitmap? {
-        if (released || source.isRecycled || source.width <= 0 || source.height <= 0) return null
+        synchronized(stateLock) {
+            if (released) return null
+        }
+        if (source.isRecycled || source.width <= 0 || source.height <= 0) return null
+
         val blurConfig = BlurConfig(
             width = source.width,
             height = source.height,
@@ -127,21 +137,25 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         }
         val context = contextRef.get() ?: return bitmap.stackBlur(radius)
 
-        val renderScript = rs ?: RenderScript.create(context).also { rs = it }
-        val script = blurScript
-            ?: ScriptIntrinsicBlur.create(renderScript, Element.U8_4(renderScript)).also { blurScript = it }
+        return synchronized(stateLock) {
+            if (released) return@synchronized null
 
-        return try {
-            val (input, output) = allocationsFor(renderScript, bitmap)
-            input.copyFrom(bitmap)
-            script.setInput(input)
-            script.setRadius(radius.coerceIn(1, 25).toFloat())
-            script.forEach(output)
-            output.copyTo(bitmap)
-            bitmap
-        } catch (e: RSRuntimeException) {
-            resetRenderScriptResources()
-            bitmap.stackBlur(radius)
+            val renderScript = rs ?: RenderScript.create(context).also { rs = it }
+            val script = blurScript
+                ?: ScriptIntrinsicBlur.create(renderScript, Element.U8_4(renderScript)).also { blurScript = it }
+
+            try {
+                val (input, output) = allocationsFor(renderScript, bitmap)
+                input.copyFrom(bitmap)
+                script.setInput(input)
+                script.setRadius(radius.coerceIn(1, 25).toFloat())
+                script.forEach(output)
+                output.copyTo(bitmap)
+                bitmap
+            } catch (e: RSRuntimeException) {
+                resetRenderScriptResourcesLocked()
+                bitmap.stackBlur(radius)
+            }
         }
     }
 
@@ -171,7 +185,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         return pair
     }
 
-    private fun resetRenderScriptResources() {
+    private fun resetRenderScriptResourcesLocked() {
         allocationsBySize.values.forEach { (input, output) ->
             input.destroy()
             output.destroy()
@@ -181,15 +195,16 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         blurScript = null
         rs?.destroy()
         rs = null
-        released = false
     }
 
     fun release() {
-        if (released) return
-        resetRenderScriptResources()
-        workingBitmapPool.values.forEach { if (!it.isRecycled) it.recycle() }
-        workingBitmapPool.clear()
-        released = true
+        synchronized(stateLock) {
+            if (released) return
+            resetRenderScriptResourcesLocked()
+            workingBitmapPool.values.forEach { if (!it.isRecycled) it.recycle() }
+            workingBitmapPool.clear()
+            released = true
+        }
     }
 
     companion object {
@@ -207,6 +222,7 @@ object NeuBlurMakerHolder {
     private var instance: BlurMaker? = null
 
     fun get(context: Context): BlurMaker {
+        NeuShadowCache.registerMemoryPressureListener(context)
         return instance ?: synchronized(this) {
             instance ?: BlurMaker(
                 context,
