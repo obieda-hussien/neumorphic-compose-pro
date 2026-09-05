@@ -1,93 +1,161 @@
 plugins {
     id 'com.android.application'
-    id 'kotlin-android'
-    id 'org.jetbrains.kotlin.plugin.compose' version '2.3.0'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
+
 android {
+
     namespace 'me.nikhilchaudhari.neumorphiccompose'
+
     compileSdk 36
 
+
     defaultConfig {
-        applicationId "me.nikhilchaudhari.neumorphiccompose"
+
+        applicationId 'me.nikhilchaudhari.neumorphiccompose'
+
         minSdk 24
         targetSdk 36
-        versionCode 3
-        versionName "3.0"
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        versionCode 5
+        versionName '4.0.0'
+
+        testInstrumentationRunner =
+                'androidx.test.runner.AndroidJUnitRunner'
+
+
         vectorDrawables {
+
             useSupportLibrary true
         }
     }
 
+
     buildTypes {
+
         release {
+
             minifyEnabled true
             shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            proguardFiles(
+                    getDefaultProguardFile(
+                            'proguard-android-optimize.txt'
+                    ),
+                    'proguard-rules.pro'
+            )
         }
     }
+
+
     compileOptions {
+
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+
     kotlinOptions {
+
         jvmTarget = '17'
     }
+
+
     buildFeatures {
+
         compose true
     }
 }
 
-dependencies {
-    // Compose BOM for version management
-    implementation platform(libs.compose.bom)
-    androidTestImplementation platform(libs.compose.bom)
 
+dependencies {
+
+    /*
+     * Compose BOM
+     */
+    implementation platform(
+            libs.compose.bom
+    )
+
+    androidTestImplementation platform(
+            libs.compose.bom
+    )
+
+
+    /*
+     * AndroidX
+     */
     implementation libs.androidx.core.ktx
     implementation libs.androidx.appcompat
     implementation libs.material
 
-    // Compose UI
+
+    /*
+     * Compose
+     */
     implementation libs.androidx.compose.ui
     implementation libs.androidx.compose.ui.graphics
     implementation libs.androidx.compose.ui.tooling.preview
     implementation libs.androidx.compose.foundation
 
-    // Material Design 3 - Expressive with latest features
+
+    /*
+     * Material 3
+     */
     implementation libs.androidx.compose.material3
 
-    // Animation - including spring physics and shared element
+
+    /*
+     * Animation
+     */
     implementation libs.androidx.compose.animation
     implementation libs.androidx.compose.animation.core
     implementation libs.androidx.compose.animation.graphics
 
-    // Material icons - core set only. The demo only uses ~10 common icons
-    // (Add, Check, Favorite, Home, Notifications, Person, Search, Settings,
-    // FavoriteBorder), all of which live in material-icons-core.
-    // material-icons-extended ships 5000+ icons and was previously pulled in
-    // unused - it alone adds several MB to a debug/unshrunk APK.
+
+    /*
+     * Icons
+     */
     implementation libs.androidx.compose.material.icons.core
 
-    // Lifecycle
+
+    /*
+     * Lifecycle
+     */
     implementation libs.androidx.lifecycle.runtime.ktx
     implementation libs.androidx.lifecycle.runtime.compose
     implementation libs.androidx.lifecycle.viewmodel.compose
 
-    // Activity Compose
+
+    /*
+     * Activity Compose
+     */
     implementation libs.androidx.activity.compose
 
-    // Library module
-    implementation project(path: ':library')
 
-    // Testing
+    /*
+     * Local library
+     */
+    implementation project(
+            path: ':library'
+    )
+
+
+    /*
+     * Tests
+     */
     testImplementation libs.junit
+
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso.core
     androidTestImplementation libs.androidx.compose.ui.test.junit4
 
-    // Debug tooling
+
+    /*
+     * Debug tooling
+     */
     debugImplementation libs.androidx.compose.ui.tooling
     debugImplementation libs.androidx.compose.ui.test.manifest
 }
