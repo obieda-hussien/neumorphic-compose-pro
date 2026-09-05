@@ -25,9 +25,7 @@ android {
         testInstrumentationRunner =
                 'androidx.test.runner.AndroidJUnitRunner'
 
-
         vectorDrawables {
-
             useSupportLibrary true
         }
     }
@@ -58,13 +56,11 @@ android {
 
 
     kotlinOptions {
-
         jvmTarget = '17'
     }
 
 
     buildFeatures {
-
         compose true
     }
 }
@@ -72,90 +68,40 @@ android {
 
 dependencies {
 
-    /*
-     * Compose BOM
-     */
-    implementation platform(
-            libs.compose.bom
-    )
+    implementation platform(libs.compose.bom)
+    androidTestImplementation platform(libs.compose.bom)
 
-    androidTestImplementation platform(
-            libs.compose.bom
-    )
-
-
-    /*
-     * AndroidX
-     */
     implementation libs.androidx.core.ktx
     implementation libs.androidx.appcompat
     implementation libs.material
 
-
-    /*
-     * Compose
-     */
     implementation libs.androidx.compose.ui
     implementation libs.androidx.compose.ui.graphics
     implementation libs.androidx.compose.ui.tooling.preview
     implementation libs.androidx.compose.foundation
 
-
-    /*
-     * Material 3
-     */
     implementation libs.androidx.compose.material3
 
-
-    /*
-     * Animation
-     */
     implementation libs.androidx.compose.animation
     implementation libs.androidx.compose.animation.core
     implementation libs.androidx.compose.animation.graphics
 
-
-    /*
-     * Icons
-     */
     implementation libs.androidx.compose.material.icons.core
 
-
-    /*
-     * Lifecycle
-     */
     implementation libs.androidx.lifecycle.runtime.ktx
     implementation libs.androidx.lifecycle.runtime.compose
     implementation libs.androidx.lifecycle.viewmodel.compose
 
-
-    /*
-     * Activity Compose
-     */
     implementation libs.androidx.activity.compose
 
+    implementation project(':library')
 
-    /*
-     * Local library
-     */
-    implementation project(
-            path: ':library'
-    )
-
-
-    /*
-     * Tests
-     */
     testImplementation libs.junit
 
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso.core
     androidTestImplementation libs.androidx.compose.ui.test.junit4
 
-
-    /*
-     * Debug tooling
-     */
     debugImplementation libs.androidx.compose.ui.tooling
     debugImplementation libs.androidx.compose.ui.test.manifest
 }
