@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.util.LruCache
 import androidx.compose.ui.graphics.Color
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.roundToInt
 import me.nikhilchaudhari.library.NeuPerformanceConfig
 
 /**
@@ -108,10 +109,10 @@ internal object NeuShadowCache {
     }
 
     private fun Color.toArgbHex(): String {
-        val a = (alpha * 255).toInt()
-        val r = (red * 255).toInt()
-        val g = (green * 255).toInt()
-        val b = (blue * 255).toInt()
+        val a = (alpha * 255).roundToInt()
+        val r = (red * 255).roundToInt()
+        val g = (green * 255).roundToInt()
+        val b = (blue * 255).roundToInt()
         return String.format("%02x%02x%02x%02x", a, r, g, b)
     }
 }
