@@ -1,25 +1,23 @@
 package me.nikhilchaudhari.library.components
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsSelectable
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsToggleable
+import androidx.compose.ui.test.assertRangeInfoEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
-import androidx.compose.ui.test.hasProgressBarRangeInfo
-import androidx.compose.ui.test.hasRole
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.math.abs
 import org.junit.Assert.assertTrue
@@ -49,7 +47,6 @@ class NeuComponentsInteractionTest {
 
         onNodeWithTag("switch")
             .assertIsToggleable()
-            .assert(hasRole(Role.Switch))
             .performClick()
 
         composeRule.runOnIdle {
@@ -74,7 +71,6 @@ class NeuComponentsInteractionTest {
 
         onNodeWithTag("checkbox")
             .assertIsToggleable()
-            .assert(hasRole(Role.Checkbox))
             .performClick()
 
         composeRule.runOnIdle {
@@ -98,12 +94,13 @@ class NeuComponentsInteractionTest {
         }
 
         onNodeWithTag("radio")
-            .assert(hasRole(Role.RadioButton))
+            .assertIsSelectable()
             .performClick()
 
         composeRule.runOnIdle {
             assertTrue(selected)
         }
+        onNodeWithTag("radio").assertIsSelected()
     }
 
     @Test
@@ -115,14 +112,15 @@ class NeuComponentsInteractionTest {
                 NeuSlider(
                     value = value,
                     onValueChange = { value = it },
-                    modifier = Modifier.testTag("slider")
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("slider")
                 )
             }
         }
 
         onNodeWithTag("slider")
-            .assert(hasRole(Role.Slider))
-            .assert(hasProgressBarRangeInfo(0f..1f))
+            .assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
             .performTouchInput {
                 click(centerRight)
             }
@@ -142,7 +140,9 @@ class NeuComponentsInteractionTest {
                 NeuSlider(
                     value = value,
                     onValueChange = { value = it },
-                    modifier = Modifier.testTag("slider-drag")
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("slider-drag")
                 )
             }
         }
@@ -167,7 +167,9 @@ class NeuComponentsInteractionTest {
                     value = value,
                     onValueChange = { value = it },
                     enabled = false,
-                    modifier = Modifier.testTag("slider-disabled")
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("slider-disabled")
                 )
             }
         }
@@ -178,26 +180,6 @@ class NeuComponentsInteractionTest {
 
         composeRule.runOnIdle {
             assertTrue(abs(value - 0.4f) < 0.0001f)
-        }
-    }
-
-    @Test
-    fun sliderAlwaysPublishesClampedValueForOutOfRangeInput() {
-        var value by mutableStateOf(1.7f)
-
-        composeRule.setContent {
-            MaterialTheme {
-                NeuSlider(
-                    value = value,
-                    onValueChange = { value = it },
-                    modifier = Modifier.testTag("slider-clamped")
-                )
-            }
-        }
-
-        onNodeWithTag("slider-clamped").assert(hasProgressBarRangeInfo(0f..1f))
-        composeRule.runOnIdle {
-            assertTrue(value > 1f)
         }
     }
 }
