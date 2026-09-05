@@ -35,48 +35,15 @@ data class BlurConfig(
 /**
  * Blur implementation with a **persistent** RenderScript context (API < 31) and
  * downsampled StackBlur (API 31+, since RenderScript is deprecated there).
- *
- * ## Performance contract - read before using
- * Constructing [BlurMaker] is expensive: on API < 31 it lazily owns a
- * `RenderScript` context, which is one of the heaviest objects you can create
- * on Android (it spins up a driver-level GPU/CPU compute context). A [BlurMaker]
- * MUST be created once and reused - e.g. via `remember { }` in a composable -
- * rather than recreated on every draw or recomposition.
- *
- * Recreating a fresh RenderScript context on every animation frame (which is
- * what earlier versions of this library did implicitly, since the modifier
- * that owned it was rebuilt on every recomposition) was the single largest
- * source of CPU/battery drain in this library.
  */
-@Suppress("DEPRECATION") // RenderScript is deprecated (no direct replacement below
-// API 31) but is this class's intentional fallback path for API < 31, where
-// StackBlur alone would be slower; see the class doc below for the full
-// rationale. Suppressed at the class level so it covers the field
-// declarations, release(), and the blurWithRenderScript() call site uniformly
-// instead of scattering per-member suppressions.
+@Suppress("DEPRECATION")
 class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
 
     private val contextRef = WeakReference(context.applicationContext ?: context)
-
-    // Created lazily on first use, then reused for the lifetime of this BlurMaker.
-    // Only the (cheap) Allocation objects are recreated per-bitmap; the expensive
-    // RenderScript + ScriptIntrinsicBlur context is created at most once.
     private var rs: RenderScript? = null
     private var blurScript: ScriptIntrinsicBlur? = null
     private var released = false
 
-    // Small pool of reusable downsampled "working" bitmaps, keyed by size.
-    // These are always scratch buffers, never the bitmap ultimately handed
-    // back to the caller (see blur() below - a fresh Bitmap.createScaledBitmap()
-    // copy is what's actually returned/cached whenever sampling > 1, which is
-    // the default). Reusing them instead of allocating a new ARGB_8888 bitmap
-    // on every single blur() call removes the most common allocation in this
-    // whole pipeline - one per shadow-cache miss - cutting GC pressure
-    // (and the pauses that come with it) accordingly.
-    //
-    // Only ever touched from the UI thread, same as every other method here
-    // (blur() runs synchronously inside Compose's draw phase) - no
-    // synchronization needed.
     private val workingBitmapPool = mutableMapOf<Long, Bitmap>()
 
     private fun sizeKey(width: Int, height: Int): Long =
@@ -85,10 +52,6 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     private fun obtainWorkingBitmap(width: Int, height: Int): Bitmap {
         val pooled = workingBitmapPool.remove(sizeKey(width, height))
         return if (pooled != null && !pooled.isRecycled) {
-            // Not guaranteed to be fully overwritten by the draw below (e.g.
-            // a small rounding difference at the edge for an oval/rounded
-            // shape) - clear it so no stale pixels from a previous shadow
-            // can show through.
             pooled.eraseColor(android.graphics.Color.TRANSPARENT)
             pooled
         } else {
@@ -101,9 +64,6 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         if (workingBitmapPool.size < MAX_POOLED_BITMAPS) {
             workingBitmapPool[sizeKey(bitmap.width, bitmap.height)] = bitmap
         } else {
-            // Pool's full of other sizes already - an app with this many
-            // distinct shadow dimensions gets little benefit from pooling
-            // this one anyway, so just let it go rather than grow unbounded.
             bitmap.recycle()
         }
     }
@@ -127,8 +87,6 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         val sampling = blurConfig.sampling.coerceAtLeast(1)
         val width = (blurConfig.width / sampling).coerceAtLeast(1)
         val height = (blurConfig.height / sampling).coerceAtLeast(1)
-
-        // Downsampled working bitmap - this is what actually gets blurred.
         val bitmap = obtainWorkingBitmap(width, height)
 
         Canvas(bitmap).run {
@@ -140,15 +98,10 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             drawBitmap(source, 0f, 0f, paint)
         }
 
-        // Blur radius must shrink along with the bitmap or the shadow looks
-        // proportionally too soft/wide once scaled back up.
         val scaledRadius = (blurConfig.radius / sampling).coerceIn(1, BlurConfig.MAX_RADIUS)
 
         val blurBitmap: Bitmap? = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                // RenderScript is deprecated/unavailable as of API 31; StackBlur is
-                // the fallback here, but it now runs on a downsampled bitmap instead
-                // of the full-resolution one.
                 bitmap.stackBlur(scaledRadius)
             } else {
                 blurWithRenderScript(bitmap, scaledRadius)
@@ -158,7 +111,6 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         }
 
         if (blurBitmap == null) {
-            // Nothing downstream needs our working buffer - pool it now.
             releaseWorkingBitmap(bitmap)
             return null
         }
@@ -166,26 +118,13 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         val result = if (sampling == 1) {
             blurBitmap
         } else {
-            // Upscale back to the requested size. Bilinear upscaling of an
-            // already-blurred image is indistinguishable from blurring at full
-            // resolution to the human eye, since blur removes high-frequency
-            // detail anyway.
             val scaled = Bitmap.createScaledBitmap(blurBitmap, blurConfig.width, blurConfig.height, true)
-            // `blurBitmap` here is either our own working buffer (the
-            // RenderScript path mutates and returns it directly) or a
-            // throwaway copy StackBlur made internally - recycle it if it's
-            // the latter, since only our own working buffer gets pooled
-            // (below) rather than recycled.
             if (scaled !== blurBitmap && blurBitmap !== bitmap) {
                 blurBitmap.recycle()
             }
             scaled
         }
 
-        // Return our own working buffer to the pool, unless it's literally
-        // the bitmap we're about to hand back to the caller (only possible
-        // on the RenderScript path with sampling == 1, where blurBitmap
-        // *is* `bitmap`) - that one is now owned by whoever we return it to.
         if (bitmap !== result) {
             releaseWorkingBitmap(bitmap)
         }
@@ -199,20 +138,11 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         }
         val context = contextRef.get() ?: return bitmap.stackBlur(radius)
 
-        // Reuse the persistent context/script instead of creating a new
-        // RenderScript instance (very expensive) on every single call.
         val renderScript = rs ?: RenderScript.create(context).also { rs = it }
         val script = blurScript
             ?: ScriptIntrinsicBlur.create(renderScript, Element.U8_4(renderScript)).also { blurScript = it }
 
         return try {
-            // Because of NeuShadowCache + downsampling, most calls land on
-            // one of a small handful of recurring (width, height) pairs (most
-            // components on a screen only come in a few distinct sizes).
-            // Reusing the Allocation pair for a size instead of allocating a
-            // fresh one every call avoids that GPU-memory alloc/dealloc
-            // churn - copyFrom()/copyTo() replace createFromBitmap()'s own
-            // internal allocation.
             val (input, output) = allocationsFor(renderScript, bitmap)
             input.copyFrom(bitmap)
             script.setInput(input)
@@ -221,25 +151,21 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             output.copyTo(bitmap)
             bitmap
         } catch (e: RSRuntimeException) {
-            // Context went bad (e.g. low memory) - drop it so the next call rebuilds
-            // it, and fall back to StackBlur for this frame.
-            release()
+            resetRenderScriptResources()
             bitmap.stackBlur(radius)
         }
     }
 
-    // Small, size-bounded cache of (input, output) Allocation pairs keyed by
-    // bitmap dimensions. Capped so a screen with many differently-sized
-    // components can't let this grow without bound.
-    private val allocationsBySize = LinkedHashMap<Pair<Int, Int>, Pair<Allocation, Allocation>>()
+    // Small, size-bounded LRU cache of (input, output) Allocation pairs.
+    // Access-order is enabled so frequently reused dimensions stay hot.
+    private val allocationsBySize =
+        LinkedHashMap<Pair<Int, Int>, Pair<Allocation, Allocation>>(16, 0.75f, true)
 
     private fun allocationsFor(renderScript: RenderScript, bitmap: Bitmap): Pair<Allocation, Allocation> {
         val key = bitmap.width to bitmap.height
         allocationsBySize[key]?.let { return it }
 
         if (allocationsBySize.size >= MAX_CACHED_ALLOCATION_SIZES) {
-            // Evict the least-recently-added entry (LinkedHashMap iteration
-            // order is insertion order here).
             val oldestKey = allocationsBySize.keys.firstOrNull()
             oldestKey?.let { allocationsBySize.remove(it) }?.let { (input, output) ->
                 input.destroy()
@@ -256,14 +182,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         return pair
     }
 
-    /**
-     * Releases the persistent RenderScript context. Call this from the owning
-     * composable's `DisposableEffect`/`onDispose` (or `View.onDetachedFromWindow`)
-     * once this [BlurMaker] is no longer needed - never after every draw.
-     */
-    fun release() {
-        if (released) return
-        released = true
+    private fun resetRenderScriptResources() {
         allocationsBySize.values.forEach { (input, output) ->
             input.destroy()
             output.destroy()
@@ -273,38 +192,26 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         blurScript = null
         rs?.destroy()
         rs = null
+        released = false
+    }
+
+    fun release() {
+        if (released) return
+        resetRenderScriptResources()
         workingBitmapPool.values.forEach { if (!it.isRecycled) it.recycle() }
         workingBitmapPool.clear()
+        released = true
     }
 
     companion object {
         private const val MAX_POOLED_BITMAPS = 8
         private const val MAX_CACHED_ALLOCATION_SIZES = 8
 
-        /**
-         * Suggested blur radius for a device's display density, capped to avoid
-         * runaway blur cost on very high density screens.
-         */
         fun radiusForDensity(densityScale: Float): Int =
             BlurConfig.MAX_RADIUS.coerceAtMost((densityScale * 10).roundToInt())
     }
 }
 
-/**
- * App-wide shared [BlurMaker].
- *
- * ## Why this exists
- * A screen with N neumorphic components used to mean N separate [BlurMaker]
- * instances, each lazily owning its own `RenderScript` context on API < 31.
- * `RenderScript.create()` is heavy - creating 15-20+ of them in a single first
- * frame (a realistic count for a screen with several cards/buttons/switches)
- * is enough to visibly freeze app startup, since Compose's first frame must
- * finish drawing on the main thread before anything is shown.
- *
- * Sharing a single [BlurMaker] (and therefore a single `RenderScript` context)
- * across the whole app means that context is created **at most once** for the
- * app's entire lifetime, no matter how many neumorphic components exist.
- */
 object NeuBlurMakerHolder {
 
     @Volatile
@@ -328,13 +235,6 @@ object NeuBlurMakerHolder {
         return BlurMaker.radiusForDensity(densityStable)
     }
 
-    /**
-     * Optional: call this once, early, off the main thread (e.g. from a
-     * background coroutine in `Application.onCreate`) to pay the one-time
-     * `RenderScript` context creation cost before the first neumorphic
-     * composable needs it, so the first frame never has to wait for it.
-     * Safe to call multiple times or never - it's a pure optimization.
-     */
     fun warmUp(context: Context) {
         get(context)
     }
