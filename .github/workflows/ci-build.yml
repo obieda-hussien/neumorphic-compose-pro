@@ -123,11 +123,17 @@ jobs:
 
   instrumentation:
     name: Instrumented & Compose UI Tests
-    runs-on: macos-15-intel
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -144,58 +150,31 @@ jobs:
       - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 30
           target: google_apis
           arch: x86_64
           profile: pixel_4
-          cores: 1
-          ram-size: 2048M
-          emulator-boot-timeout: 1200
-          emulator-options: -no-window -no-snapshot-load -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect -no-metrics -camera-back none
+          cores: 2
+          ram-size: 4096M
+          heap-size: 512M
+          disk-size: 4G
+          force-avd-creation: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
-          pre-emulator-launch-script: |
-            adb kill-server || true
-            adb start-server
-            adb devices
           script: |
-            set -u
+            set -euo pipefail
 
-            SERIAL="emulator-${EMULATOR_PORT:-5554}"
+            echo "=== Devices ==="
+            adb devices -l
 
-            wait_for_device() {
-              for attempt in $(seq 1 90); do
-                state="$(adb -s "$SERIAL" get-state 2>/dev/null || true)"
-                boot="$(adb -s "$SERIAL" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
-                if [ "$state" = "device" ] && [ "$boot" = "1" ]; then
-                  adb -s "$SERIAL" shell pm path android >/dev/null 2>&1 && return 0
-                fi
-                sleep 2
-              done
-              echo "Emulator did not reach a usable ADB/package-manager state."
-              adb devices -l || true
-              return 1
-            }
-
-            wait_for_device
-            adb -s "$SERIAL" shell input keyevent 82 || true
-
-            for attempt in 1 2 3; do
-              echo "Instrumented test attempt $attempt/3"
-              if ./gradlew connectedDebugAndroidTest --no-daemon --no-parallel --max-workers=1; then
-                exit 0
-              fi
-
-              echo "Instrumented tests failed on attempt $attempt. Reconnecting ADB before retry."
-              adb disconnect "$SERIAL" || true
-              adb reconnect device || true
-              adb start-server || true
-              wait_for_device || true
-              sleep 5
-            done
-
-            echo "Instrumented tests failed after 3 attempts."
-            adb devices -l || true
-            exit 1
+            echo "=== Running instrumented tests ==="
+            ./gradlew connectedDebugAndroidTest \
+              --no-daemon \
+              --no-parallel \
+              --max-workers=1 \
+              --stacktrace \
+              -Dorg.gradle.jvmargs="-Xmx2g"
 
       - name: Upload Instrumented Test Results
         uses: actions/upload-artifact@v7
@@ -209,11 +188,17 @@ jobs:
 
   benchmark:
     name: Macrobenchmark Smoke Tests
-    runs-on: macos-15-intel
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -230,58 +215,31 @@ jobs:
       - name: Run Macrobenchmarks
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 30
           target: google_apis
           arch: x86_64
           profile: pixel_4
-          cores: 1
-          ram-size: 2048M
-          emulator-boot-timeout: 1200
-          emulator-options: -no-window -no-snapshot-load -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect -no-metrics -camera-back none
+          cores: 2
+          ram-size: 4096M
+          heap-size: 512M
+          disk-size: 4G
+          force-avd-creation: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
-          pre-emulator-launch-script: |
-            adb kill-server || true
-            adb start-server
-            adb devices
           script: |
-            set -u
+            set -euo pipefail
 
-            SERIAL="emulator-${EMULATOR_PORT:-5554}"
+            echo "=== Devices ==="
+            adb devices -l
 
-            wait_for_device() {
-              for attempt in $(seq 1 90); do
-                state="$(adb -s "$SERIAL" get-state 2>/dev/null || true)"
-                boot="$(adb -s "$SERIAL" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
-                if [ "$state" = "device" ] && [ "$boot" = "1" ]; then
-                  adb -s "$SERIAL" shell pm path android >/dev/null 2>&1 && return 0
-                fi
-                sleep 2
-              done
-              echo "Emulator did not reach a usable ADB/package-manager state."
-              adb devices -l || true
-              return 1
-            }
-
-            wait_for_device
-            adb -s "$SERIAL" shell input keyevent 82 || true
-
-            for attempt in 1 2 3; do
-              echo "Macrobenchmark attempt $attempt/3"
-              if ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest --no-daemon --no-parallel --max-workers=1; then
-                exit 0
-              fi
-
-              echo "Macrobenchmark failed on attempt $attempt. Reconnecting ADB before retry."
-              adb disconnect "$SERIAL" || true
-              adb reconnect device || true
-              adb start-server || true
-              wait_for_device || true
-              sleep 5
-            done
-
-            echo "Macrobenchmarks failed after 3 attempts."
-            adb devices -l || true
-            exit 1
+            echo "=== Running macrobenchmarks ==="
+            ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest \
+              --no-daemon \
+              --no-parallel \
+              --max-workers=1 \
+              --stacktrace \
+              -Dorg.gradle.jvmargs="-Xmx2g"
 
       - name: Upload Macrobenchmark Results
         uses: actions/upload-artifact@v7
