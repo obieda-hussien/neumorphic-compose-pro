@@ -97,12 +97,16 @@ internal object NeuShadowCache {
         val elevationBits = elevationPx.toRawBits()
         val strokeBits = strokeWidthPx.toRawBits()
         val blurDownsampling = NeuPerformanceConfig.blurDownsampling
+        val adaptive = NeuPerformanceConfig.adaptiveBlurEnabled
+        val workBudget = NeuPerformanceConfig.blurWorkBudget
         return buildString {
             append(pass).append('|')
             append(widthPx).append('x').append(heightPx).append('|')
             append("e").append(elevationBits).append('|')
             append("s").append(strokeBits).append('|')
             append("b").append(blurDownsampling).append('|')
+            append("a").append(if (adaptive) 1 else 0).append('|')
+            append("w").append(workBudget).append('|')
             append("l").append(lightColor.toArgbHex())
             append("d").append(darkColor.toArgbHex())
             append("c").append(cornerDescriptor).append('|')
