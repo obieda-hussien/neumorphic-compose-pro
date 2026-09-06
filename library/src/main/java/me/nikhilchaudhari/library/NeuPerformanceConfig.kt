@@ -5,33 +5,42 @@ import me.nikhilchaudhari.library.internal.NeuShadowCache
 /**
  * App-tunable performance knobs for neumorphic shadow rendering.
  *
- * The defaults were chosen to be safe and visually lossless for typical UI
- * (cards, buttons, switches at normal screen density). They're exposed here
- * because "typical" doesn't cover every app:
- *
- * - An app targeting low-end/entry-level devices might want more aggressive
- *   downsampling to save CPU, even at a small quality cost.
- * - An app with dozens of distinct neumorphic shapes on screen at once (many
- *   different sizes/colors, so the shared cache gets little reuse) might want
- *   a bigger cache budget to avoid thrashing; a very simple app might prefer
- *   a smaller budget to save memory.
- *
- * Set these once, early (e.g. in `Application.onCreate`), before any
- * neumorphic composable is drawn. They are safe to change later too, but a
- * change only affects shadows generated *after* the change - it does not
- * retroactively re-render what's already cached or on screen.
+ * The configuration separates visual quality from the amount of CPU work used
+ * to produce each blur. Changes are visible across renderer threads and affect
+ * newly generated shadows.
  */
 object NeuPerformanceConfig {
 
-    /**
-     * How much shadow bitmaps are downsampled before blurring, then scaled
-     * back up. `1` = full resolution, `2` is the default.
-     */
+    /** Minimum sampling factor requested by the application. `1` is highest quality. */
     @Volatile
     var blurDownsampling: Int = 2
         set(value) {
             require(value >= 1) { "blurDownsampling must be >= 1, was $value" }
             field = value
+            NeuShadowCache.clear()
+        }
+
+    /**
+     * Enables the deterministic adaptive blur policy. When enabled, large/high-radius
+     * shadows can use stronger downsampling while small shadows keep the requested floor.
+     */
+    @Volatile
+    var adaptiveBlurEnabled: Boolean = true
+        set(value) {
+            field = value
+            NeuShadowCache.clear()
+        }
+
+    /**
+     * Approximate blur work budget in pixels*radius before adaptive downsampling.
+     * Larger values favor quality; smaller values favor CPU/battery usage.
+     */
+    @Volatile
+    var blurWorkBudget: Long = 180_000L
+        set(value) {
+            require(value >= 1L) { "blurWorkBudget must be >= 1, was $value" }
+            field = value
+            NeuShadowCache.clear()
         }
 
     /** Maximum size, in KB, of the process-wide generated-shadow cache. */
