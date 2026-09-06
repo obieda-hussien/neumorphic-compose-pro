@@ -21,20 +21,14 @@ data class BlurConfig(
     }
 }
 
-/** Blur implementation shared by Compose and XML/View adapters. */
 class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
-
     private val stateLock = Any()
     private val contextRef = WeakReference(context.applicationContext ?: context)
     private var released = false
     private val blurEngine: BlurEngine = synchronized(stateLock) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            StackBlurEngine()
-        } else {
-            RenderScriptBlurEngine(contextRef.get() ?: context, stateLock)
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) StackBlurEngine()
+        else RenderScriptBlurEngine(contextRef.get() ?: context, stateLock)
     }
-
     private val workingBitmapPool = mutableMapOf<Long, Bitmap>()
 
     private fun sizeKey(width: Int, height: Int): Long =
@@ -45,29 +39,22 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         if (pooled != null && !pooled.isRecycled) {
             pooled.eraseColor(android.graphics.Color.TRANSPARENT)
             pooled
-        } else {
-            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        }
+        } else Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     }
 
-    private fun releaseWorkingBitmap(bitmap: Bitmap) {
-        synchronized(stateLock) {
-            if (bitmap.isRecycled) return
-            if (released || workingBitmapPool.size >= MAX_POOLED_BITMAPS) {
-                bitmap.recycle()
-            } else {
-                workingBitmapPool[sizeKey(bitmap.width, bitmap.height)]?.let {
-                    if (!it.isRecycled) it.recycle()
-                }
-                workingBitmapPool[sizeKey(bitmap.width, bitmap.height)] = bitmap
+    private fun releaseWorkingBitmap(bitmap: Bitmap) = synchronized(stateLock) {
+        if (bitmap.isRecycled) return@synchronized
+        if (released || workingBitmapPool.size >= MAX_POOLED_BITMAPS) bitmap.recycle()
+        else {
+            workingBitmapPool[sizeKey(bitmap.width, bitmap.height)]?.let {
+                if (!it.isRecycled) it.recycle()
             }
+            workingBitmapPool[sizeKey(bitmap.width, bitmap.height)] = bitmap
         }
     }
 
     fun warmUp() {
-        synchronized(stateLock) {
-            if (released) return
-        }
+        synchronized(stateLock) { if (released) return }
         blurEngine.warmUp()
     }
 
@@ -76,11 +63,8 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         radius: Int = defaultBlurRadius,
         sampling: Int = NeuPerformanceConfig.blurDownsampling
     ): Bitmap? {
-        synchronized(stateLock) {
-            if (released) return null
-        }
+        synchronized(stateLock) { if (released) return null }
         if (source.isRecycled || source.width <= 0 || source.height <= 0) return null
-
         return blur(source, BlurConfig(source.width, source.height, radius, sampling))
     }
 
@@ -94,7 +78,9 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
                 NeuPerformanceConfig.blurWorkBudget
             )
         } else {
-            blurConfig.sampling.coerceIn(1, NeuRenderPolicy.MAX_SAMPLING)
+            // Explicit caller configuration remains authoritative when adaptive
+            // selection is disabled, preserving the pre-4.0 behavior.
+            blurConfig.sampling.coerceAtLeast(1)
         }
 
         val width = ((blurConfig.width + sampling - 1) / sampling).coerceAtLeast(1)
@@ -134,14 +120,12 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         return result
     }
 
-    fun release() {
-        synchronized(stateLock) {
-            if (released) return
-            released = true
-            blurEngine.release()
-            workingBitmapPool.values.forEach { if (!it.isRecycled) it.recycle() }
-            workingBitmapPool.clear()
-        }
+    fun release() = synchronized(stateLock) {
+        if (released) return@synchronized
+        released = true
+        blurEngine.release()
+        workingBitmapPool.values.forEach { if (!it.isRecycled) it.recycle() }
+        workingBitmapPool.clear()
     }
 
     companion object {
@@ -152,8 +136,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
 }
 
 object NeuBlurMakerHolder {
-    @Volatile
-    private var instance: BlurMaker? = null
+    @Volatile private var instance: BlurMaker? = null
 
     fun get(context: Context): BlurMaker {
         NeuShadowCache.registerMemoryPressureListener(context)
