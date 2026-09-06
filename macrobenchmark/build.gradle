@@ -17,10 +17,9 @@ android {
 
     buildTypes {
         benchmark {
-            // The benchmark module is a test APK. Keep R8 disabled here so the
-            // benchmark/test runtime dependencies remain intact. The tested app
-            // still uses its production-like, minified :app:benchmark build type.
-            minifyEnabled false
+            // Keep shrinking enabled so the benchmark/test APK matches the
+            // obfuscation state of the tested app's benchmark build type.
+            minifyEnabled true
             matchingFallbacks = ['release']
         }
     }
