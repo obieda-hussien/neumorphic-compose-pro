@@ -141,18 +141,28 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Stabilize ADB daemon
+        run: |
+          adb kill-server || true
+          adb start-server
+          adb devices
+
       - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           target: google_apis
           arch: x86_64
-          profile: pixel_2
-          cores: 2
-          ram-size: 3072M
-          emulator-boot-timeout: 900
-          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          profile: pixel_4
+          cores: 1
+          ram-size: 2048M
+          emulator-boot-timeout: 1200
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -no-metrics -camera-back none
           disable-animations: true
+          pre-emulator-launch-script: |
+            adb kill-server || true
+            adb start-server
+            adb devices
           script: ./gradlew connectedDebugAndroidTest --no-daemon
 
       - name: Upload Instrumented Test Results
@@ -185,18 +195,28 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Stabilize ADB daemon
+        run: |
+          adb kill-server || true
+          adb start-server
+          adb devices
+
       - name: Run Macrobenchmarks
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           target: google_apis
           arch: x86_64
-          profile: pixel_2
-          cores: 2
-          ram-size: 3072M
-          emulator-boot-timeout: 900
-          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          profile: pixel_4
+          cores: 1
+          ram-size: 2048M
+          emulator-boot-timeout: 1200
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -no-metrics -camera-back none
           disable-animations: true
+          pre-emulator-launch-script: |
+            adb kill-server || true
+            adb start-server
+            adb devices
           script: ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest --no-daemon
 
       - name: Upload Macrobenchmark Results
