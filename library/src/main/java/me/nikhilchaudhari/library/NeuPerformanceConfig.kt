@@ -31,6 +31,17 @@ object NeuPerformanceConfig {
             NeuShadowCache.clear()
         }
 
+    /**
+     * When enabled, the renderer reduces blur work while Android reports thermal
+     * pressure, then naturally returns to the normal budget as the device cools.
+     */
+    @Volatile
+    var thermalAwareRendering: Boolean = true
+        set(value) {
+            field = value
+            NeuShadowCache.clear()
+        }
+
     /** Maximum size, in KB, of the process-wide generated-shadow cache. */
     @Volatile
     var shadowCacheBudgetKB: Int = 6 * 1024
