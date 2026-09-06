@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.plugin.compose'
+    id 'androidx.baselineprofile'
 }
 
 android {
@@ -75,6 +76,9 @@ dependencies {
     implementation libs.androidx.activity.compose
     implementation project(':library')
     implementation libs.androidx.profileinstaller
+
+    // Feed generated, device-observed hot paths into the production release.
+    baselineProfile(project(':baseline-profile'))
 
     testImplementation libs.junit
 
