@@ -27,4 +27,17 @@ android {
 
 dependencies {
     implementation libs.androidx.benchmark.macro.junit4
+
+    // benchmark-macro-junit4 reaches these through optional/compile-time
+    // infrastructure. The benchmark APK is minified, so R8 needs the actual
+    // runtime implementations present rather than treating them as missing.
+    implementation libs.androidx.arch.core.common
+    implementation libs.androidx.arch.core.runtime
+    implementation libs.androidx.concurrent.futures
+    implementation libs.androidx.profileinstaller
+    implementation libs.androidx.startup.runtime
+    implementation libs.androidx.tracing
+    implementation libs.kotlinx.coroutines.core
+    implementation libs.google.guava
+    implementation libs.errorprone.annotations
 }
