@@ -75,7 +75,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     fun blur(
         source: Bitmap,
         radius: Int = defaultBlurRadius,
-        sampling: Int = BlurConfig.DEFAULT_SAMPLING
+        sampling: Int = NeuPerformanceConfig.blurDownsampling
     ): Bitmap? {
         synchronized(stateLock) {
             if (released) return null
@@ -163,9 +163,10 @@ object NeuBlurMakerHolder {
     private var instance: BlurMaker? = null
 
     fun get(context: Context): BlurMaker {
+        // Registration is idempotent, but do not resize the cache on every
+        // composition. A trim event intentionally lowers the active budget;
+        // restoring it here would immediately undo OS memory-pressure relief.
         NeuShadowCache.registerMemoryPressureListener(context)
-        // Restore the caller's configured cache budget after an OS trim event.
-        NeuShadowCache.resizeBudget(NeuPerformanceConfig.shadowCacheBudgetKB)
         return instance ?: synchronized(this) {
             instance ?: BlurMaker(
                 context,
