@@ -31,7 +31,10 @@ internal object NeuRenderPolicy {
         val safeWidth = width.coerceAtLeast(1)
         val safeHeight = height.coerceAtLeast(1)
         val safeRadius = radius.coerceIn(1, BlurConfig.MAX_RADIUS)
-        val safeBudget = workBudget.coerceAtLeast(1L)
+        // A non-positive budget is an invalid/unset value. Treat it as the
+        // policy default rather than as a one-operation budget that forces the
+        // renderer to its lowest quality tier.
+        val safeBudget = if (workBudget > 0L) workBudget else DEFAULT_BLUR_WORK_BUDGET
 
         if (base > MAX_AUTO_SAMPLING) return base
 
