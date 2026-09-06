@@ -123,7 +123,8 @@ jobs:
 
   instrumentation:
     name: Instrumented & Compose UI Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
 
     steps:
       - name: Checkout Repository
@@ -134,6 +135,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -150,31 +152,14 @@ jobs:
       - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
-          target: google_apis
+          api-level: 29
+          target: default
           arch: x86_64
-          profile: pixel_4
-          cores: 2
-          ram-size: 4096M
-          heap-size: 512M
-          disk-size: 4G
           force-avd-creation: true
-          emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          emulator-boot-timeout: 600
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            set -euo pipefail
-
-            echo "=== Devices ==="
-            adb devices -l
-
-            echo "=== Running instrumented tests ==="
-            ./gradlew connectedDebugAndroidTest \
-              --no-daemon \
-              --no-parallel \
-              --max-workers=1 \
-              --stacktrace \
-              -Dorg.gradle.jvmargs="-Xmx2g"
+          script: ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace
 
       - name: Upload Instrumented Test Results
         uses: actions/upload-artifact@v7
@@ -185,10 +170,12 @@ jobs:
             **/build/outputs/androidTest-results/
             **/build/reports/androidTests/
           retention-days: 14
+          if-no-files-found: ignore
 
   benchmark:
     name: Macrobenchmark Smoke Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
 
     steps:
       - name: Checkout Repository
@@ -199,6 +186,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -215,31 +203,14 @@ jobs:
       - name: Run Macrobenchmarks
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
-          target: google_apis
+          api-level: 29
+          target: default
           arch: x86_64
-          profile: pixel_4
-          cores: 2
-          ram-size: 4096M
-          heap-size: 512M
-          disk-size: 4G
           force-avd-creation: true
-          emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          emulator-boot-timeout: 600
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            set -euo pipefail
-
-            echo "=== Devices ==="
-            adb devices -l
-
-            echo "=== Running macrobenchmarks ==="
-            ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest \
-              --no-daemon \
-              --no-parallel \
-              --max-workers=1 \
-              --stacktrace \
-              -Dorg.gradle.jvmargs="-Xmx2g"
+          script: ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest --no-daemon --stacktrace
 
       - name: Upload Macrobenchmark Results
         uses: actions/upload-artifact@v7
@@ -250,3 +221,4 @@ jobs:
             macrobenchmark/build/outputs/
             macrobenchmark/build/reports/
           retention-days: 30
+          if-no-files-found: ignore
