@@ -35,6 +35,11 @@ internal object NeuShadowCache {
     fun clear() = cache.evictAll()
     fun resizeBudget(newBudgetKB: Int) { cache.resize(newBudgetKB.coerceAtLeast(1)) }
 
+    /** Restore the application's configured cache budget after temporary memory pressure. */
+    fun restoreConfiguredBudget() {
+        cache.resize(NeuPerformanceConfig.shadowCacheBudgetKB.coerceAtLeast(1))
+    }
+
     fun registerMemoryPressureListener(context: Context) {
         if (!memoryCallbackRegistered.compareAndSet(false, true)) return
         val applicationContext = context.applicationContext ?: context
@@ -46,11 +51,10 @@ internal object NeuShadowCache {
                     level >= ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> clear()
                     level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> resizeBudget(1)
                     level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> resizeBudget(1024)
-                    // TRIM_MEMORY_UI_HIDDEN means the app UI moved to the background.
-                    // Do not evict the hot shadow cache here: doing so makes the next
-                    // Activity resume pay the full CPU/bitmap generation cost again.
-                    // Stronger memory-pressure levels above still trim aggressively.
-                    level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> Unit
+                    // UI hidden is not memory pressure. Keep hot shadows and only release
+                    // backend resources that may not survive backgrounding cleanly.
+                    level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ->
+                        NeuBlurMakerHolder.onAppBackgrounded()
                 }
             }
         })
