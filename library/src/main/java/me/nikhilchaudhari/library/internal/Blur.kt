@@ -75,7 +75,11 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
                 blurConfig.height,
                 blurConfig.radius,
                 blurConfig.sampling,
-                NeuPerformanceConfig.blurWorkBudget
+                if (NeuPerformanceConfig.thermalAwareRendering) {
+                    NeuThermalPolicy.effectiveWorkBudget(NeuPerformanceConfig.blurWorkBudget)
+                } else {
+                    NeuPerformanceConfig.blurWorkBudget
+                }
             )
         } else {
             // Explicit caller configuration remains authoritative when adaptive
@@ -140,6 +144,7 @@ object NeuBlurMakerHolder {
 
     fun get(context: Context): BlurMaker {
         NeuShadowCache.registerMemoryPressureListener(context)
+        NeuThermalPolicy.register(context)
         return instance ?: synchronized(this) {
             instance ?: BlurMaker(
                 context,
