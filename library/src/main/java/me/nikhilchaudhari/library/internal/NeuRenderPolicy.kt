@@ -1,31 +1,26 @@
 package me.nikhilchaudhari.library.internal
 
+import androidx.compose.ui.unit.Dp
 import kotlin.math.ceil
 import kotlin.math.cbrt
+import kotlin.math.round
 
 /**
- * Adaptive renderer policy used to bound blur work while preserving useful
- * detail on small UI elements.
+ * Deterministic policies that keep expensive shadow rendering bounded.
  *
- * A separable stack blur has a work profile that grows with image area and the
- * blur radius. Downsampling by `s` reduces the image area roughly by `1/s²`
- * and the effective blur radius by `1/s`, so a practical cost proxy is:
- *
- *     cost ~= width * height * radius / s³
- *
- * We choose the smallest sampling factor that keeps this proxy under a fixed
- * work budget. This is intentionally a deterministic, stateless policy: the
- * same geometry and radius always choose the same quality level, so it cannot
- * cause frame-to-frame quality oscillation.
+ * The adaptive blur policy uses the practical cost model
+ * `work ~= width * height * radius / sampling^3` because downsampling reduces
+ * both the pixel count and the effective blur radius. The animation policy
+ * separately quantizes renderer inputs so spring animations do not create a
+ * unique cache entry for every floating-point frame value.
  */
 internal object NeuRenderPolicy {
 
     const val MIN_SAMPLING = 1
     const val MAX_SAMPLING = 4
 
-    // Work units are intentionally conservative. A UI shadow should consume a
-    // small fraction of a frame rather than behaving like an image processor.
     private const val DEFAULT_BLUR_WORK_BUDGET = 180_000L
+    private const val ELEVATION_QUANTUM_DP = 0.5f
 
     fun effectiveBlurSampling(
         width: Int,
@@ -44,5 +39,22 @@ internal object NeuRenderPolicy {
         val required = cbrt(estimatedWork / safeBudget.toDouble()).let(::ceil).toInt()
 
         return required.coerceIn(base, MAX_SAMPLING)
+    }
+
+    /**
+     * Snap renderer elevation to a small perceptual step.
+     *
+     * Compose animation remains continuous; only the expensive bitmap
+     * generation sees the quantized value. This makes nearby animation frames
+     * converge on the same cache entries instead of repeatedly blurring.
+     */
+    fun quantizeElevation(elevation: Dp): Dp {
+        if (!elevation.value.isFinite() || elevation.value <= 0f) return elevation
+        return Dp(round(elevation.value / ELEVATION_QUANTUM_DP) * ELEVATION_QUANTUM_DP)
+    }
+
+    fun quantizeDp(value: Dp): Dp {
+        if (!value.value.isFinite() || value.value <= 0f) return value
+        return Dp(round(value.value / ELEVATION_QUANTUM_DP) * ELEVATION_QUANTUM_DP)
     }
 }
