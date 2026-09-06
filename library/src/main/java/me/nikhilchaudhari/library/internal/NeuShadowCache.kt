@@ -68,6 +68,8 @@ internal object NeuShadowCache {
         val blurDownsampling = NeuPerformanceConfig.blurDownsampling
         val adaptive = NeuPerformanceConfig.adaptiveBlurEnabled
         val workBudget = NeuPerformanceConfig.blurWorkBudget
+        val thermalAware = NeuPerformanceConfig.thermalAwareRendering
+        val thermalTier = if (thermalAware) NeuThermalPolicy.cacheTier() else 0
         return buildString {
             append(pass).append('|')
             append(widthPx).append('x').append(heightPx).append('|')
@@ -76,6 +78,7 @@ internal object NeuShadowCache {
             append("b").append(blurDownsampling).append('|')
             append("a").append(if (adaptive) 1 else 0).append('|')
             append("w").append(workBudget).append('|')
+            append("t").append(if (thermalAware) 1 else 0).append(thermalTier).append('|')
             append("l").append(lightColor.toArgbHex())
             append("d").append(darkColor.toArgbHex())
             append("c").append(cornerDescriptor).append('|')
