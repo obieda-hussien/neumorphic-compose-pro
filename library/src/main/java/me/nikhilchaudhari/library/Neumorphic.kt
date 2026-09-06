@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Immutable
 import me.nikhilchaudhari.library.internal.BlurMaker
 import me.nikhilchaudhari.library.internal.NeuBlurMakerHolder
 import me.nikhilchaudhari.library.shapes.NeuShape
@@ -25,6 +26,7 @@ import me.nikhilchaudhari.library.shapes.Punched
 import me.nikhilchaudhari.library.shapes.ShapeConfig
 
 /** Insets configuration for neumorphic shadows. */
+@Immutable
 data class NeuInsets(
     val horizontal: Dp = 6.dp,
     val vertical: Dp = 6.dp
