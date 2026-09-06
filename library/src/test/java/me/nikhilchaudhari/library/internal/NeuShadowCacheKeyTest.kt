@@ -14,6 +14,7 @@ class NeuShadowCacheKeyTest {
         NeuPerformanceConfig.blurDownsampling = 2
         NeuPerformanceConfig.adaptiveBlurEnabled = true
         NeuPerformanceConfig.blurWorkBudget = 180_000L
+        NeuPerformanceConfig.thermalAwareRendering = true
     }
 
     private fun key(
@@ -58,6 +59,12 @@ class NeuShadowCacheKeyTest {
         val normalBudgetKey = key()
         NeuPerformanceConfig.blurWorkBudget = 90_000L
         assertNotEquals(normalBudgetKey, key())
+    }
+    @Test fun `changing thermal awareness changes the key`() {
+        NeuPerformanceConfig.thermalAwareRendering = true
+        val thermalAwareKey = key()
+        NeuPerformanceConfig.thermalAwareRendering = false
+        assertNotEquals(thermalAwareKey, key())
     }
 }
 
