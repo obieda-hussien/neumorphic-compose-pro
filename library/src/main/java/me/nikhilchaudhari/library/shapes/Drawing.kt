@@ -153,7 +153,7 @@ internal fun ContentDrawScope.drawOnBackground(
 
     val shadowMask = NeuShadowCache.get(maskCacheKey) ?: run {
         val maskDrawable = GradientDrawable().apply {
-            setColor(Color.WHITE.toArgb())
+            setColor(Color.White.toArgb())
             setSize(width, height)
             setBounds(0, 0, width, height)
             setNeuShape(cornerType, ShadowForm.Default, radius, shapeConfig.lightSource)
