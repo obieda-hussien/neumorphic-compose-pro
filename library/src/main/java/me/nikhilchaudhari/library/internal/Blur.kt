@@ -92,15 +92,17 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     }
 
     private fun blur(source: Bitmap, blurConfig: BlurConfig): Bitmap? {
-        // Adaptive quality keeps the amount of work bounded as component size
-        // or blur radius grows, while preserving the caller's configured
-        // sampling value as the minimum quality level.
-        val sampling = NeuRenderPolicy.effectiveBlurSampling(
-            width = blurConfig.width,
-            height = blurConfig.height,
-            radius = blurConfig.radius,
-            configuredSampling = blurConfig.sampling
-        )
+        val sampling = if (NeuPerformanceConfig.adaptiveBlurEnabled) {
+            NeuRenderPolicy.effectiveBlurSampling(
+                width = blurConfig.width,
+                height = blurConfig.height,
+                radius = blurConfig.radius,
+                configuredSampling = blurConfig.sampling,
+                workBudget = NeuPerformanceConfig.blurWorkBudget
+            )
+        } else {
+            blurConfig.sampling.coerceIn(1, NeuRenderPolicy.MAX_SAMPLING)
+        }
 
         // Use ceil division so the final source row/column are never clipped
         // when source dimensions are not exact multiples of the sampling factor.
