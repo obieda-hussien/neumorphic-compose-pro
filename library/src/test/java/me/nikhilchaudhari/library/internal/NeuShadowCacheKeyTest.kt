@@ -13,6 +13,8 @@ class NeuShadowCacheKeyTest {
     @After
     fun resetPerformanceConfig() {
         NeuPerformanceConfig.blurDownsampling = 2
+        NeuPerformanceConfig.adaptiveBlurEnabled = true
+        NeuPerformanceConfig.blurWorkBudget = 180_000L
     }
 
     private fun key(
@@ -73,6 +75,28 @@ class NeuShadowCacheKeyTest {
         val lowerCpuQualityKey = key()
 
         assertNotEquals(normalQualityKey, lowerCpuQualityKey)
+    }
+
+    @Test
+    fun `changing adaptive mode changes the key`() {
+        NeuPerformanceConfig.adaptiveBlurEnabled = true
+        val adaptiveKey = key()
+
+        NeuPerformanceConfig.adaptiveBlurEnabled = false
+        val fixedKey = key()
+
+        assertNotEquals(adaptiveKey, fixedKey)
+    }
+
+    @Test
+    fun `changing work budget changes the key`() {
+        NeuPerformanceConfig.blurWorkBudget = 180_000L
+        val normalBudgetKey = key()
+
+        NeuPerformanceConfig.blurWorkBudget = 90_000L
+        val tighterBudgetKey = key()
+
+        assertNotEquals(normalBudgetKey, tighterBudgetKey)
     }
 }
 
