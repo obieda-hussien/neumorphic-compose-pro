@@ -27,7 +27,10 @@ internal class StackBlurEngine : BlurEngine {
 
     override fun blur(bitmap: Bitmap, radius: Int): Bitmap? {
         if (bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) return null
-        return bitmap.stackBlur(radius.coerceIn(1, BlurConfig.MAX_RADIUS))
+        // BlurMaker gives us a disposable scratch bitmap, so mutating it in place
+        // avoids the full-size Bitmap.copy() that the public extension preserves
+        // for backwards-compatible non-mutating callers.
+        return bitmap.stackBlurInPlace(radius.coerceIn(1, BlurConfig.MAX_RADIUS))
     }
 
     override fun release() = Unit
@@ -57,7 +60,7 @@ internal class RenderScriptBlurEngine(
     override fun blur(bitmap: Bitmap, radius: Int): Bitmap? {
         if (bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) return null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            return bitmap.stackBlur(radius.coerceIn(1, BlurConfig.MAX_RADIUS))
+            return bitmap.stackBlurInPlace(radius.coerceIn(1, BlurConfig.MAX_RADIUS))
         }
 
         val context = contextRef.get() ?: return StackBlurEngine().blur(bitmap, radius)
