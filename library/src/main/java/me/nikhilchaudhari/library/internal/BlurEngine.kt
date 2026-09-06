@@ -73,6 +73,9 @@ internal class RenderScriptBlurEngine(
             } catch (_: RSRuntimeException) {
                 resetLocked()
                 StackBlurEngine().blur(bitmap, radius)
+            } catch (_: IllegalStateException) {
+                resetLocked()
+                StackBlurEngine().blur(bitmap, radius)
             }
         }
     }
