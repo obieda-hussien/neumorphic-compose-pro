@@ -41,13 +41,6 @@ internal object NeuRenderPolicy {
         return required.coerceIn(base, MAX_SAMPLING)
     }
 
-    /**
-     * Snap renderer elevation to a small perceptual step.
-     *
-     * Compose animation remains continuous; only the expensive bitmap
-     * generation sees the quantized value. This makes nearby animation frames
-     * converge on the same cache entries instead of repeatedly blurring.
-     */
     fun quantizeElevation(elevation: Dp): Dp {
         if (!elevation.value.isFinite() || elevation.value <= 0f) return elevation
         return Dp(round(elevation.value / ELEVATION_QUANTUM_DP) * ELEVATION_QUANTUM_DP)

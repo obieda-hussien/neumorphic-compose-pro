@@ -12,19 +12,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 import me.nikhilchaudhari.library.NeuPerformanceConfig
 
-/**
- * Process-wide cache of generated (already blurred) shadow bitmaps, keyed by a
- * description of the shape/size/colors that produced them.
- *
- * A neumorphic shadow is a pure function of (size, elevation, stroke width,
- * colors, corner shape, light source, blur quality). Two composables with
- * identical params produce the same output for a given blur configuration.
- */
 internal object NeuShadowCache {
-
     private val cache = object : LruCache<String, Bitmap>(6 * 1024) {
-        override fun sizeOf(key: String, value: Bitmap): Int =
-            (value.byteCount / 1024).coerceAtLeast(1)
+        override fun sizeOf(key: String, value: Bitmap): Int = (value.byteCount / 1024).coerceAtLeast(1)
     }
 
     private val memoryCallbackRegistered = AtomicBoolean(false)
@@ -34,9 +24,7 @@ internal object NeuShadowCache {
         return if (bitmap.isRecycled) {
             cache.remove(key)
             null
-        } else {
-            bitmap
-        }
+        } else bitmap
     }
 
     fun put(key: String, bitmap: Bitmap) {
@@ -45,26 +33,14 @@ internal object NeuShadowCache {
     }
 
     fun clear() = cache.evictAll()
+    fun resizeBudget(newBudgetKB: Int) { cache.resize(newBudgetKB.coerceAtLeast(1)) }
 
-    fun resizeBudget(newBudgetKB: Int) {
-        cache.resize(newBudgetKB.coerceAtLeast(1))
-    }
-
-    /**
-     * Registers one process-wide memory-pressure callback. The callback uses
-     * the application context so it cannot retain an Activity or other short-lived Context.
-     */
     fun registerMemoryPressureListener(context: Context) {
         if (!memoryCallbackRegistered.compareAndSet(false, true)) return
-
         val applicationContext = context.applicationContext ?: context
         applicationContext.registerComponentCallbacks(object : ComponentCallbacks2 {
             override fun onConfigurationChanged(newConfig: Configuration) = Unit
-
-            override fun onLowMemory() {
-                clear()
-            }
-
+            override fun onLowMemory() = clear()
             override fun onTrimMemory(level: Int) {
                 when {
                     level >= ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> clear()
@@ -76,13 +52,6 @@ internal object NeuShadowCache {
         })
     }
 
-    /**
-     * Builds a stable cache key for a shadow bitmap.
-     *
-     * Float values are represented by their exact IEEE-754 bit pattern instead
-     * of approximate buckets so a cache hit always corresponds to the exact
-     * render parameters that generated the bitmap.
-     */
     fun keyFor(
         pass: String,
         widthPx: Int,

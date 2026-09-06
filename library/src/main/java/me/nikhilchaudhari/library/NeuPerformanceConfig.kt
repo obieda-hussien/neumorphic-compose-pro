@@ -2,13 +2,7 @@ package me.nikhilchaudhari.library
 
 import me.nikhilchaudhari.library.internal.NeuShadowCache
 
-/**
- * App-tunable performance knobs for neumorphic shadow rendering.
- *
- * The configuration separates visual quality from the amount of CPU work used
- * to produce each blur. Changes are visible across renderer threads and affect
- * newly generated shadows.
- */
+/** App-tunable performance knobs for neumorphic shadow rendering. */
 object NeuPerformanceConfig {
 
     /** Minimum sampling factor requested by the application. `1` is highest quality. */
@@ -20,10 +14,7 @@ object NeuPerformanceConfig {
             NeuShadowCache.clear()
         }
 
-    /**
-     * Enables the deterministic adaptive blur policy. When enabled, large/high-radius
-     * shadows can use stronger downsampling while small shadows keep the requested floor.
-     */
+    /** Enables deterministic adaptive blur quality selection. */
     @Volatile
     var adaptiveBlurEnabled: Boolean = true
         set(value) {
@@ -31,10 +22,7 @@ object NeuPerformanceConfig {
             NeuShadowCache.clear()
         }
 
-    /**
-     * Approximate blur work budget in pixels*radius before adaptive downsampling.
-     * Larger values favor quality; smaller values favor CPU/battery usage.
-     */
+    /** Approximate blur work budget in pixels*radius before adaptive downsampling. */
     @Volatile
     var blurWorkBudget: Long = 180_000L
         set(value) {

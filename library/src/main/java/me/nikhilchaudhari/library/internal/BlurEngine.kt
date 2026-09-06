@@ -12,10 +12,6 @@ import android.renderscript.RSRuntimeException
 import android.renderscript.ScriptIntrinsicBlur
 import java.lang.ref.WeakReference
 
-/**
- * Internal blur backend boundary. Keeping API-level-specific blur implementations
- * behind this interface lets the renderer evolve without changing public APIs.
- */
 internal interface BlurEngine {
     fun warmUp()
     fun blur(bitmap: Bitmap, radius: Int): Bitmap?
@@ -27,9 +23,6 @@ internal class StackBlurEngine : BlurEngine {
 
     override fun blur(bitmap: Bitmap, radius: Int): Bitmap? {
         if (bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) return null
-        // BlurMaker gives us a disposable scratch bitmap, so mutating it in place
-        // avoids the full-size Bitmap.copy() that the public extension preserves
-        // for backwards-compatible non-mutating callers.
         return bitmap.stackBlurInPlace(radius.coerceIn(1, BlurConfig.MAX_RADIUS))
     }
 
@@ -46,15 +39,12 @@ internal class RenderScriptBlurEngine(
     private var rs: RenderScript? = null
     private var blurScript: ScriptIntrinsicBlur? = null
 
-    // Small, size-bounded LRU cache of (input, output) Allocation pairs.
     private val allocationsBySize =
         LinkedHashMap<Pair<Int, Int>, Pair<Allocation, Allocation>>(16, 0.75f, true)
 
     override fun warmUp() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return
-        synchronized(lock) {
-            ensureResourcesLocked()
-        }
+        synchronized(lock) { ensureResourcesLocked() }
     }
 
     override fun blur(bitmap: Bitmap, radius: Int): Bitmap? {
@@ -64,7 +54,6 @@ internal class RenderScriptBlurEngine(
         }
 
         val context = contextRef.get() ?: return StackBlurEngine().blur(bitmap, radius)
-
         return synchronized(lock) {
             val renderScript = try {
                 ensureResourcesLocked(context)
@@ -81,7 +70,7 @@ internal class RenderScriptBlurEngine(
                 script.forEach(output)
                 output.copyTo(bitmap)
                 bitmap
-            } catch (e: RSRuntimeException) {
+            } catch (_: RSRuntimeException) {
                 resetLocked()
                 StackBlurEngine().blur(bitmap, radius)
             }
@@ -141,12 +130,8 @@ internal class RenderScriptBlurEngine(
     }
 
     override fun release() {
-        synchronized(lock) {
-            resetLocked()
-        }
+        synchronized(lock) { resetLocked() }
     }
 
-    companion object {
-        private const val MAX_CACHED_ALLOCATION_SIZES = 8
-    }
+    companion object { private const val MAX_CACHED_ALLOCATION_SIZES = 8 }
 }
