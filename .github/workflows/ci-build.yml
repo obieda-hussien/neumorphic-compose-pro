@@ -141,12 +141,6 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Stabilize ADB daemon
-        run: |
-          adb kill-server || true
-          adb start-server
-          adb wait-for-device || true
-
       - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -166,12 +160,14 @@ jobs:
           script: |
             set -u
 
+            SERIAL="emulator-${EMULATOR_PORT:-5554}"
+
             wait_for_device() {
               for attempt in $(seq 1 90); do
-                state="$(adb -s emulator-5554 get-state 2>/dev/null || true)"
-                boot="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+                state="$(adb -s "$SERIAL" get-state 2>/dev/null || true)"
+                boot="$(adb -s "$SERIAL" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
                 if [ "$state" = "device" ] && [ "$boot" = "1" ]; then
-                  adb -s emulator-5554 shell pm path android >/dev/null 2>&1 && return 0
+                  adb -s "$SERIAL" shell pm path android >/dev/null 2>&1 && return 0
                 fi
                 sleep 2
               done
@@ -181,7 +177,7 @@ jobs:
             }
 
             wait_for_device
-            adb -s emulator-5554 shell input keyevent 82 || true
+            adb -s "$SERIAL" shell input keyevent 82 || true
 
             for attempt in 1 2 3; do
               echo "Instrumented test attempt $attempt/3"
@@ -190,7 +186,7 @@ jobs:
               fi
 
               echo "Instrumented tests failed on attempt $attempt. Reconnecting ADB before retry."
-              adb disconnect emulator-5554 || true
+              adb disconnect "$SERIAL" || true
               adb reconnect device || true
               adb start-server || true
               wait_for_device || true
@@ -231,12 +227,6 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Stabilize ADB daemon
-        run: |
-          adb kill-server || true
-          adb start-server
-          adb wait-for-device || true
-
       - name: Run Macrobenchmarks
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -256,12 +246,14 @@ jobs:
           script: |
             set -u
 
+            SERIAL="emulator-${EMULATOR_PORT:-5554}"
+
             wait_for_device() {
               for attempt in $(seq 1 90); do
-                state="$(adb -s emulator-5554 get-state 2>/dev/null || true)"
-                boot="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+                state="$(adb -s "$SERIAL" get-state 2>/dev/null || true)"
+                boot="$(adb -s "$SERIAL" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
                 if [ "$state" = "device" ] && [ "$boot" = "1" ]; then
-                  adb -s emulator-5554 shell pm path android >/dev/null 2>&1 && return 0
+                  adb -s "$SERIAL" shell pm path android >/dev/null 2>&1 && return 0
                 fi
                 sleep 2
               done
@@ -271,7 +263,7 @@ jobs:
             }
 
             wait_for_device
-            adb -s emulator-5554 shell input keyevent 82 || true
+            adb -s "$SERIAL" shell input keyevent 82 || true
 
             for attempt in 1 2 3; do
               echo "Macrobenchmark attempt $attempt/3"
@@ -280,7 +272,7 @@ jobs:
               fi
 
               echo "Macrobenchmark failed on attempt $attempt. Reconnecting ADB before retry."
-              adb disconnect emulator-5554 || true
+              adb disconnect "$SERIAL" || true
               adb reconnect device || true
               adb start-server || true
               wait_for_device || true
