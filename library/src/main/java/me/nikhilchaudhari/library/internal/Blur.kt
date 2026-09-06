@@ -25,11 +25,20 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     private val stateLock = Any()
     private val contextRef = WeakReference(context.applicationContext ?: context)
     private var released = false
-    private val blurEngine: BlurEngine = synchronized(stateLock) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) StackBlurEngine()
-        else RenderScriptBlurEngine(contextRef.get() ?: context, stateLock)
-    }
+    private var blurEngine: BlurEngine? = null
     private val workingBitmapPool = mutableMapOf<Long, Bitmap>()
+
+    private fun createBlurEngine(): BlurEngine =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            StackBlurEngine()
+        } else {
+            RenderScriptBlurEngine(contextRef.get() ?: throw IllegalStateException("Application context is unavailable"), stateLock)
+        }
+
+    private fun engineLocked(): BlurEngine {
+        check(!released) { "BlurMaker has been released" }
+        return blurEngine ?: createBlurEngine().also { blurEngine = it }
+    }
 
     private fun sizeKey(width: Int, height: Int): Long =
         (width.toLong() shl 32) or (height.toLong() and 0xFFFFFFFFL)
@@ -54,8 +63,17 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     }
 
     fun warmUp() {
-        synchronized(stateLock) { if (released) return }
-        blurEngine.warmUp()
+        synchronized(stateLock) {
+            if (released) return
+            engineLocked().warmUp()
+        }
+    }
+
+    /** Release backend resources when the UI is hidden, while retaining cached shadows. */
+    fun onAppBackgrounded() = synchronized(stateLock) {
+        if (released) return@synchronized
+        blurEngine?.release()
+        blurEngine = null
     }
 
     fun blur(
@@ -63,7 +81,6 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         radius: Int = defaultBlurRadius,
         sampling: Int = NeuPerformanceConfig.blurDownsampling
     ): Bitmap? {
-        synchronized(stateLock) { if (released) return null }
         if (source.isRecycled || source.width <= 0 || source.height <= 0) return null
         return blur(source, BlurConfig(source.width, source.height, radius, sampling))
     }
@@ -82,8 +99,6 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
                 }
             )
         } else {
-            // Explicit caller configuration remains authoritative when adaptive
-            // selection is disabled, preserving the pre-4.0 behavior.
             blurConfig.sampling.coerceAtLeast(1)
         }
 
@@ -101,10 +116,18 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         }
 
         val scaledRadius = (blurConfig.radius / sampling).coerceIn(1, BlurConfig.MAX_RADIUS)
-        val blurBitmap = try {
-            blurEngine.blur(bitmap, scaledRadius)
-        } catch (_: Exception) {
-            StackBlurEngine().blur(bitmap, scaledRadius)
+        val blurBitmap = synchronized(stateLock) {
+            if (released) null
+            else try {
+                engineLocked().blur(bitmap, scaledRadius)
+            } catch (_: Exception) {
+                // Backend failures must never take down rendering. Fall back to the
+                // pure Kotlin/CPU implementation and recreate the legacy backend
+                // on the next operation if necessary.
+                blurEngine?.release()
+                blurEngine = null
+                StackBlurEngine().blur(bitmap, scaledRadius)
+            }
         }
 
         if (blurBitmap == null) {
@@ -127,7 +150,8 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     fun release() = synchronized(stateLock) {
         if (released) return@synchronized
         released = true
-        blurEngine.release()
+        blurEngine?.release()
+        blurEngine = null
         workingBitmapPool.values.forEach { if (!it.isRecycled) it.recycle() }
         workingBitmapPool.clear()
     }
@@ -144,6 +168,7 @@ object NeuBlurMakerHolder {
 
     fun get(context: Context): BlurMaker {
         NeuShadowCache.registerMemoryPressureListener(context)
+        NeuShadowCache.restoreConfiguredBudget()
         NeuThermalPolicy.register(context)
         return instance ?: synchronized(this) {
             instance ?: BlurMaker(
@@ -151,6 +176,11 @@ object NeuBlurMakerHolder {
                 calculateDefaultBlurRadius(context.resources.displayMetrics)
             ).also { instance = it }
         }
+    }
+
+    /** Drop backend resources after backgrounding without throwing away hot rendered shadows. */
+    fun onAppBackgrounded() {
+        instance?.onAppBackgrounded()
     }
 
     private fun calculateDefaultBlurRadius(displayMetrics: DisplayMetrics): Int {
