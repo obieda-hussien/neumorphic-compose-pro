@@ -400,13 +400,13 @@ fun NeuSlider(
     val thumbSizePx = with(density) { thumbSize.toPx() }
     val coercedValue = value.coerceIn(0f, 1f)
 
-    val animatedThumbSize by animateDpAsState(
-        targetValue = if (isPressed) thumbSize * 1.2f else thumbSize,
+    val animatedThumbScale by animateFloatAsState(
+        targetValue = if (isPressed) 1.2f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
-        label = "sliderThumbSize"
+        label = "sliderThumbScale"
     )
 
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
@@ -480,7 +480,7 @@ fun NeuSlider(
             Box(
                 modifier = Modifier
                     .offset(x = thumbOffset)
-                    .size(animatedThumbSize)
+                    .size(thumbSize)
                     .neumorphic(
                         neuShape = Punched.Oval(),
                         lightShadowColor = colorScheme.lightShadowColor,
@@ -488,6 +488,7 @@ fun NeuSlider(
                         elevation = 6.dp
                     )
                     .background(accentColor, CircleShape)
+                    .scale(animatedThumbScale)
             )
         }
     }
@@ -1095,13 +1096,16 @@ fun NeuSeekBar(
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
 
-    val animatedThumbSize by animateDpAsState(
-        targetValue = if (isDragging > 0f) thumbSize * 1.15f else thumbSize,
+    // Keep the thumb's layout size constant while animating only its visual scale.
+    // Changing the layout size invalidated the shadow bitmap and forced a new blur
+    // at drag start, which was especially expensive after returning from background.
+    val animatedThumbScale by animateFloatAsState(
+        targetValue = if (isDragging > 0f) 1.15f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
-        label = "seekbarThumbSize"
+        label = "seekbarThumbScale"
     )
 
     BoxWithConstraints(
@@ -1168,7 +1172,7 @@ fun NeuSeekBar(
         Box(
             modifier = Modifier
                 .offset { IntOffset(thumbOffsetX.roundToInt(), 0) }
-                .size(animatedThumbSize)
+                .size(thumbSize)
                 .neumorphic(
                     neuShape = Punched.Oval(),
                     lightShadowColor = colorScheme.lightShadowColor,
@@ -1177,6 +1181,7 @@ fun NeuSeekBar(
                 )
                 .background(accentColor, CircleShape)
                 .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                .scale(animatedThumbScale)
         )
     }
 }
