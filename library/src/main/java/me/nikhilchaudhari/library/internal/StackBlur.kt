@@ -20,7 +20,9 @@ internal fun Bitmap.stackBlurInPlace(radius: Int): Bitmap? {
 
     val w = width
     val h = height
-    val workspace = STACK_BLUR_WORKSPACE.get()
+    val workspace = STACK_BLUR_WORKSPACE.get() ?: StackBlurWorkspace().also {
+        STACK_BLUR_WORKSPACE.set(it)
+    }
     workspace.ensure(w, h, radius)
 
     val pix = workspace.pixels
@@ -181,4 +183,4 @@ private class StackBlurWorkspace {
     companion object { const val MAX_RETAINED_PIXELS = 1_000_000 }
 }
 
-private val STACK_BLUR_WORKSPACE = ThreadLocal.withInitial { StackBlurWorkspace() }
+private val STACK_BLUR_WORKSPACE = ThreadLocal.withInitial<StackBlurWorkspace?> { StackBlurWorkspace() }
