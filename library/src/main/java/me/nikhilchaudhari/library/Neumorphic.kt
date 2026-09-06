@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -18,9 +19,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.Immutable
 import me.nikhilchaudhari.library.internal.BlurMaker
 import me.nikhilchaudhari.library.internal.NeuBlurMakerHolder
+import me.nikhilchaudhari.library.internal.NeuRenderPolicy
 import me.nikhilchaudhari.library.shapes.NeuShape
 import me.nikhilchaudhari.library.shapes.Punched
 import me.nikhilchaudhari.library.shapes.ShapeConfig
@@ -116,7 +117,7 @@ fun Modifier.animatedNeumorphic(
         lightShadowColor = lightShadowColor,
         darkShadowColor = darkShadowColor,
         strokeWidth = strokeWidth,
-        elevation = animatedElevation,
+        elevation = NeuRenderPolicy.quantizeElevation(animatedElevation),
         lightSource = lightSource
     )
 }
@@ -165,7 +166,7 @@ fun Modifier.springNeumorphic(
         lightShadowColor = lightShadowColor,
         darkShadowColor = darkShadowColor,
         strokeWidth = strokeWidth,
-        elevation = animatedElevation,
+        elevation = NeuRenderPolicy.quantizeElevation(animatedElevation),
         lightSource = lightSource
     )
 }
@@ -210,8 +211,8 @@ fun Modifier.expressiveNeumorphic(
         neuShape = neuShape,
         lightShadowColor = lightShadowColor,
         darkShadowColor = darkShadowColor,
-        strokeWidth = animatedStrokeWidth,
-        elevation = animatedElevation,
+        strokeWidth = NeuRenderPolicy.quantizeDp(animatedStrokeWidth),
+        elevation = NeuRenderPolicy.quantizeElevation(animatedElevation),
         lightSource = lightSource
     )
 }
