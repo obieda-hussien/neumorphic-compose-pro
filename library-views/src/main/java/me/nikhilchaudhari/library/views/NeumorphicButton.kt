@@ -16,26 +16,6 @@ import kotlin.math.roundToInt
 
 /**
  * A Button with neumorphic styling for traditional Android Views/XML layouts
- * 
- * Usage in XML:
- * ```xml
- * <me.nikhilchaudhari.library.views.NeumorphicButton
- *     android:layout_width="wrap_content"
- *     android:layout_height="wrap_content"
- *     android:text="Click Me"
- *     app:neuShape="punched"
- *     app:neuCornerRadius="12dp"
- *     app:neuElevation="6dp"
- *     app:neuLightShadowColor="@color/white"
- *     app:neuDarkShadowColor="@color/gray" />
- * ```
- * 
- * Usage in Java:
- * ```java
- * NeumorphicButton button = new NeumorphicButton(context);
- * button.setNeuShapeType(NeuShapeType.PUNCHED);
- * button.setNeuElevation(dpToPx(8));
- * ```
  */
 class NeumorphicButton @JvmOverloads constructor(
     context: Context,
@@ -43,65 +23,69 @@ class NeumorphicButton @JvmOverloads constructor(
     defStyleAttr: Int = android.R.attr.buttonStyle
 ) : AppCompatButton(context, attrs, defStyleAttr) {
 
-    // Neumorphic properties
     var neuShapeType: NeuShapeType = NeuShapeType.PUNCHED
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuCornerType: NeuCornerType = NeuCornerType.ROUNDED
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuCornerRadius: Float = 12f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuLightShadowColor: Int = Color.WHITE
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuDarkShadowColor: Int = Color.LTGRAY
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuElevation: Float = 6f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            currentElevation = if (isPressed) {
+                value * NeuConstants.PRESSED_ELEVATION_FACTOR
+            } else {
+                value
+            }
+            markShadowDirty()
         }
 
     var neuStrokeWidth: Float = 6f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuInsetHorizontal: Float = 6f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuInsetVertical: Float = 6f.dpToPx()
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuLightSource: LightSource = LightSource.TOP_LEFT
         set(value) {
             field = value
-            invalidate()
+            markShadowDirty()
         }
 
     var neuBackgroundColor: Int = Color.parseColor("#ECEAEB")
@@ -110,26 +94,20 @@ class NeumorphicButton @JvmOverloads constructor(
             invalidate()
         }
 
-    // Animation properties
     var enablePressAnimation: Boolean = true
     private var isPressed = false
     private var currentElevation: Float = neuElevation
 
-    // Internal blur maker
     private var blurMaker: BlurMaker? = null
 
-    /** Test-only accessor - exposes the shared BlurMaker so tests can
-     *  verify it's the same instance across all neumorphic Views. */
     @androidx.annotation.VisibleForTesting
     fun blurMakerForTest(): BlurMaker? = blurMaker
 
-    // Cached bitmaps
     private var lightShadowBitmap: Bitmap? = null
     private var darkShadowBitmap: Bitmap? = null
     private var foregroundShadowBitmap: Bitmap? = null
     private var needsRedraw = true
 
-    // Paint objects
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         isFilterBitmap = true
@@ -138,52 +116,43 @@ class NeumorphicButton @JvmOverloads constructor(
     init {
         blurMaker = NeuBlurMakerHolder.get(context)
 
-        // Parse XML attributes
         attrs?.let {
             val typedArray = context.obtainStyledAttributes(it, R.styleable.NeumorphicButton)
-            
+
             neuShapeType = when (typedArray.getInt(R.styleable.NeumorphicButton_neuShape, 0)) {
                 0 -> NeuShapeType.PUNCHED
                 1 -> NeuShapeType.PRESSED
                 2 -> NeuShapeType.POT
                 else -> NeuShapeType.PUNCHED
             }
-            
+
             neuCornerType = when (typedArray.getInt(R.styleable.NeumorphicButton_neuCornerType, 0)) {
                 0 -> NeuCornerType.ROUNDED
                 1 -> NeuCornerType.OVAL
                 else -> NeuCornerType.ROUNDED
             }
-            
+
             neuCornerRadius = typedArray.getDimension(
                 R.styleable.NeumorphicButton_neuCornerRadius, 12f.dpToPx()
             )
-            
             neuLightShadowColor = typedArray.getColor(
                 R.styleable.NeumorphicButton_neuLightShadowColor, Color.WHITE
             )
-            
             neuDarkShadowColor = typedArray.getColor(
                 R.styleable.NeumorphicButton_neuDarkShadowColor, Color.LTGRAY
             )
-            
             neuElevation = typedArray.getDimension(
                 R.styleable.NeumorphicButton_neuElevation, 6f.dpToPx()
             )
-            currentElevation = neuElevation
-            
             neuStrokeWidth = typedArray.getDimension(
                 R.styleable.NeumorphicButton_neuStrokeWidth, 6f.dpToPx()
             )
-            
             neuInsetHorizontal = typedArray.getDimension(
                 R.styleable.NeumorphicButton_neuInsetHorizontal, 6f.dpToPx()
             )
-            
             neuInsetVertical = typedArray.getDimension(
                 R.styleable.NeumorphicButton_neuInsetVertical, 6f.dpToPx()
             )
-            
             neuLightSource = when (typedArray.getInt(R.styleable.NeumorphicButton_neuLightSource, 0)) {
                 0 -> LightSource.TOP_LEFT
                 1 -> LightSource.TOP_RIGHT
@@ -191,32 +160,26 @@ class NeumorphicButton @JvmOverloads constructor(
                 3 -> LightSource.BOTTOM_RIGHT
                 else -> LightSource.TOP_LEFT
             }
-            
             neuBackgroundColor = typedArray.getColor(
                 R.styleable.NeumorphicButton_neuBackgroundColor, Color.parseColor("#ECEAEB")
             )
-            
+
             typedArray.recycle()
         }
 
-        // Remove default button background
         background = null
         stateListAnimator = null
-        
-        // Set layer type for proper shadow rendering
-        // Use hardware layer on modern devices, fall back to software for complex operations
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             setLayerType(LAYER_TYPE_HARDWARE, null)
         } else {
-            // Software layer required for blur effects on older devices
             setLayerType(LAYER_TYPE_SOFTWARE, null)
         }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        needsRedraw = true
-        invalidateShadowBitmaps()
+        markShadowDirty()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -225,14 +188,12 @@ class NeumorphicButton @JvmOverloads constructor(
                 MotionEvent.ACTION_DOWN -> {
                     isPressed = true
                     currentElevation = neuElevation * NeuConstants.PRESSED_ELEVATION_FACTOR
-                    needsRedraw = true
-                    invalidate()
+                    markShadowDirty()
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     isPressed = false
                     currentElevation = neuElevation
-                    needsRedraw = true
-                    invalidate()
+                    markShadowDirty()
                 }
             }
         }
@@ -303,7 +264,7 @@ class NeumorphicButton @JvmOverloads constructor(
 
     private fun drawNeumorphicBackground(canvas: Canvas) {
         backgroundPaint.color = neuBackgroundColor
-        
+
         when (neuCornerType) {
             NeuCornerType.OVAL -> {
                 canvas.drawOval(
@@ -323,21 +284,29 @@ class NeumorphicButton @JvmOverloads constructor(
 
     private fun generateShadowBitmaps() {
         invalidateShadowBitmaps()
-        
+
         if (width <= 0 || height <= 0) return
 
-        lightShadowBitmap = generateShadowBitmap(neuLightShadowColor)
-        darkShadowBitmap = generateShadowBitmap(neuDarkShadowColor)
-
-        if (neuShapeType == NeuShapeType.PRESSED || neuShapeType == NeuShapeType.POT) {
-            foregroundShadowBitmap = generateForegroundShadowBitmap()
+        when (neuShapeType) {
+            NeuShapeType.PUNCHED -> {
+                lightShadowBitmap = generateShadowBitmap(neuLightShadowColor)
+                darkShadowBitmap = generateShadowBitmap(neuDarkShadowColor)
+            }
+            NeuShapeType.PRESSED -> {
+                foregroundShadowBitmap = generateForegroundShadowBitmap()
+            }
+            NeuShapeType.POT -> {
+                lightShadowBitmap = generateShadowBitmap(neuLightShadowColor)
+                darkShadowBitmap = generateShadowBitmap(neuDarkShadowColor)
+                foregroundShadowBitmap = generateForegroundShadowBitmap()
+            }
         }
     }
 
     private fun generateShadowBitmap(shadowColor: Int): Bitmap? {
         val bitmapWidth = (width + currentElevation * 2).roundToInt()
         val bitmapHeight = (height + currentElevation * 2).roundToInt()
-        
+
         if (bitmapWidth <= 0 || bitmapHeight <= 0) return null
 
         val drawable = GradientDrawable().apply {
@@ -366,7 +335,7 @@ class NeumorphicButton @JvmOverloads constructor(
 
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        
+
         val (lightOffsetX, lightOffsetY) = getLightOffset()
 
         val lightDrawable = GradientDrawable().apply {
@@ -434,6 +403,12 @@ class NeumorphicButton @JvmOverloads constructor(
         foregroundShadowBitmap = null
     }
 
+    private fun markShadowDirty() {
+        needsRedraw = true
+        invalidateShadowBitmaps()
+        invalidate()
+    }
+
     private fun calculateDefaultBlurRadius(): Int {
         val density = resources.displayMetrics.density
         return min(25, (density * 10).roundToInt())
@@ -445,14 +420,11 @@ class NeumorphicButton @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        needsRedraw = true
         invalidateShadowBitmaps()
-        // Note: blurMaker is intentionally NOT released here - it is a shared,
-        // app-wide instance (see NeuBlurMakerHolder), and other neumorphic
-        // views/composables elsewhere on screen may still be using it.
     }
 
     fun refresh() {
-        needsRedraw = true
-        invalidate()
+        markShadowDirty()
     }
 }

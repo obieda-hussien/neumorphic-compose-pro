@@ -1,0 +1,21 @@
+Neumorphism UI for Android
+
+This repository is a fork and continued development of the original
+Neumorphism Android library by Nikhil Chaudhari and its upstream
+contributors.
+
+Original work and attribution:
+- Original project author: Nikhil Chaudhari
+- Original neumorphism concept: Alexander Plyuto
+- Stack Blur algorithm: Mario Klingemann
+
+Current fork maintainer:
+- Abdelrahman Hussein (Obieda)
+
+Abdelrahman Hussein is responsible for the ongoing development,
+maintenance, modernization, performance improvements, bug fixes,
+testing, and future releases of this fork.
+
+This NOTICE supplements the Apache License, Version 2.0. It does not
+replace or modify the license terms or remove any attribution or
+copyright notices from the original work.

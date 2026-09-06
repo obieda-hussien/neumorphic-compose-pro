@@ -2,72 +2,58 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.plugin.compose'
+    id 'androidx.baselineprofile'
 }
 
-
 android {
-
     namespace 'me.nikhilchaudhari.neumorphiccompose'
-
     compileSdk 36
 
-
     defaultConfig {
-
         applicationId 'me.nikhilchaudhari.neumorphiccompose'
-
         minSdk 24
         targetSdk 36
-
-        versionCode 5
-        versionName '4.0.0'
-
-        testInstrumentationRunner =
-                'androidx.test.runner.AndroidJUnitRunner'
+        versionCode 6
+        versionName '4.0.1'
+        testInstrumentationRunner = 'androidx.test.runner.AndroidJUnitRunner'
 
         vectorDrawables {
             useSupportLibrary true
         }
     }
 
-
     buildTypes {
-
         release {
-
             minifyEnabled true
             shrinkResources true
-
             proguardFiles(
-                    getDefaultProguardFile(
-                            'proguard-android-optimize.txt'
-                    ),
+                    getDefaultProguardFile('proguard-android-optimize.txt'),
                     'proguard-rules.pro'
             )
         }
+
+        benchmark {
+            initWith release
+            signingConfig signingConfigs.debug
+            matchingFallbacks = ['release']
+        }
     }
 
-
     compileOptions {
-
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 
-
     kotlinOptions {
         jvmTarget = '17'
     }
-
 
     buildFeatures {
         compose true
     }
 }
 
-
 dependencies {
-
     implementation platform(libs.compose.bom)
     androidTestImplementation platform(libs.compose.bom)
 
@@ -79,22 +65,20 @@ dependencies {
     implementation libs.androidx.compose.ui.graphics
     implementation libs.androidx.compose.ui.tooling.preview
     implementation libs.androidx.compose.foundation
-
     implementation libs.androidx.compose.material3
-
     implementation libs.androidx.compose.animation
     implementation libs.androidx.compose.animation.core
     implementation libs.androidx.compose.animation.graphics
-
     implementation libs.androidx.compose.material.icons.core
-
     implementation libs.androidx.lifecycle.runtime.ktx
     implementation libs.androidx.lifecycle.runtime.compose
     implementation libs.androidx.lifecycle.viewmodel.compose
-
     implementation libs.androidx.activity.compose
-
     implementation project(':library')
+    implementation libs.androidx.profileinstaller
+
+    // Feed generated, device-observed hot paths into the production release.
+    baselineProfile(project(':baseline-profile'))
 
     testImplementation libs.junit
 
