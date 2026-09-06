@@ -14,11 +14,21 @@ material = "1.14.0"
 lifecycle = "2.10.0"
 activityCompose = "1.12.3"
 profileinstaller = "1.4.1"
+archCore = "2.2.0"
+concurrentFutures = "1.2.0"
+startup = "1.2.0"
+tracing = "1.2.0"
 
 # Testing
 junit = "4.13.2"
 androidxTestExtJunit = "1.2.1"
 espressoCore = "3.6.1"
+benchmark = "1.4.1"
+
+# Macrobenchmark runtime dependencies
+coroutines = "1.10.2"
+guava = "33.4.8-android"
+errorProneAnnotations = "2.38.0"
 
 # Publishing
 nexusPublish = "2.0.0"
@@ -31,6 +41,11 @@ androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx"
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 material = { module = "com.google.android.material:material", version.ref = "material" }
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
+androidx-arch-core-common = { module = "androidx.arch.core:core-common", version.ref = "archCore" }
+androidx-arch-core-runtime = { module = "androidx.arch.core:core-runtime", version.ref = "archCore" }
+androidx-concurrent-futures = { module = "androidx.concurrent:concurrent-futures", version.ref = "concurrentFutures" }
+androidx-startup-runtime = { module = "androidx.startup:startup-runtime", version.ref = "startup" }
+androidx-tracing = { module = "androidx.tracing:tracing", version.ref = "tracing" }
 
 # Compose BOM
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -65,3 +80,11 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 junit = { module = "junit:junit", version.ref = "junit" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
 androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espressoCore" }
+androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
+
+# Macrobenchmark test-runtime support. benchmark-macro-junit4 intentionally keeps
+# several infrastructure libraries out of the test APK's runtime graph; because
+# this module is minified, R8 must see the concrete implementations explicitly.
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+google-guava = { module = "com.google.guava:guava", version.ref = "guava" }
+errorprone-annotations = { module = "com.google.errorprone:error_prone_annotations", version.ref = "errorProneAnnotations" }

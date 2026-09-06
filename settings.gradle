@@ -8,7 +8,6 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-
     repositories {
         google()
         mavenCentral()
@@ -20,3 +19,5 @@ rootProject.name = "NeumorphismCompose"
 include(":app")
 include(":library")
 include(":library-views")
+include(":macrobenchmark")
+include(":baseline-profile")

@@ -4,9 +4,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,6 +21,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -32,6 +37,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.progressSemantics
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -65,6 +73,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -81,19 +90,9 @@ import kotlin.math.roundToInt
 
 /**
  * Material 3 Expressive Neumorphic Button
- * 
+ *
  * A button with neumorphic styling and spring physics animations.
  * Compatible with Material 3 Expressive design language.
- *
- * @param onClick Callback when button is clicked
- * @param modifier Modifier to be applied to the button
- * @param enabled Whether the button is enabled
- * @param colorScheme Neumorphic color scheme to use
- * @param shape Shape of the button
- * @param neuShape Neumorphic shape type
- * @param elevation Shadow elevation
- * @param contentPadding Padding around the content
- * @param content Content of the button
  */
 @Composable
 fun NeuButton(
@@ -110,7 +109,7 @@ fun NeuButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by rememberMinHoldPressedState(interactionSource)
     val isHovered by interactionSource.collectIsHoveredAsState()
-    
+
     val scale by animateFloatAsState(
         targetValue = when {
             isPressed -> 0.96f
@@ -123,7 +122,7 @@ fun NeuButton(
         ),
         label = "buttonScale"
     )
-    
+
     val animatedElevation by animateDpAsState(
         targetValue = when {
             isPressed -> elevation * 0.3f
@@ -148,6 +147,10 @@ fun NeuButton(
                 elevation = animatedElevation
             )
             .background(colorScheme.backgroundColor, shape)
+            .hoverable(
+                interactionSource = interactionSource,
+                enabled = enabled
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -158,14 +161,10 @@ fun NeuButton(
             .padding(contentPadding),
         contentAlignment = Alignment.Center
     ) {
-        val contentColor = if (enabled) {
-            colorScheme.onBackgroundColor.takeIf { it != Color.Unspecified }
-                ?: MaterialTheme.colorScheme.onSurface
-        } else {
-            (colorScheme.onBackgroundColor.takeIf { it != Color.Unspecified }
-                ?: MaterialTheme.colorScheme.onSurface).copy(alpha = 0.38f)
-        }
-        
+        val baseContentColor = colorScheme.onBackgroundColor.takeIf { it != Color.Unspecified }
+            ?: MaterialTheme.colorScheme.onSurface
+        val contentColor = if (enabled) baseContentColor else baseContentColor.copy(alpha = 0.38f)
+
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             ProvideTextStyle(MaterialTheme.typography.labelLarge) {
                 content()
@@ -174,19 +173,7 @@ fun NeuButton(
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Card
- * 
- * A card container with neumorphic styling.
- *
- * @param modifier Modifier to be applied to the card
- * @param colorScheme Neumorphic color scheme to use
- * @param shape Shape of the card
- * @param neuShape Neumorphic shape type
- * @param elevation Shadow elevation
- * @param contentPadding Padding around the content
- * @param content Content of the card
- */
+/** Material 3 Expressive Neumorphic Card. */
 @Composable
 fun NeuCard(
     modifier: Modifier = Modifier,
@@ -199,11 +186,6 @@ fun NeuCard(
 ) {
     Box(
         modifier = modifier
-            // Only clip when the shape is a recessed/Pressed one, whose inner
-            // shadow needs to stay inside the bounds. Punched (raised) and
-            // Pot (mixed) shapes draw a shadow that's *meant* to extend past
-            // the bounds - clipping unconditionally here would cut that
-            // shadow away, leaving a flat-looking box instead of a soft one.
             .let { if (neuShape is Pressed) it.clip(shape) else it }
             .neumorphic(
                 neuShape = neuShape,
@@ -216,35 +198,14 @@ fun NeuCard(
     ) {
         val contentColor = colorScheme.onBackgroundColor.takeIf { it != Color.Unspecified }
             ?: MaterialTheme.colorScheme.onSurface
-        
+
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             content()
         }
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Text Field
- * 
- * A text field with neumorphic pressed styling.
- *
- * @param value Current text value
- * @param onValueChange Callback when value changes
- * @param modifier Modifier to be applied to the text field
- * @param enabled Whether the text field is enabled
- * @param readOnly Whether the text field is read-only
- * @param placeholder Placeholder text
- * @param leadingIcon Leading icon composable
- * @param trailingIcon Trailing icon composable
- * @param colorScheme Neumorphic color scheme to use
- * @param shape Shape of the text field
- * @param textStyle Text style for the input
- * @param keyboardOptions Keyboard options
- * @param keyboardActions Keyboard actions
- * @param singleLine Whether the text field is single line
- * @param maxLines Maximum number of lines
- * @param visualTransformation Visual transformation for the text
- */
+/** Material 3 Expressive Neumorphic Text Field. */
 @Composable
 fun NeuTextField(
     value: String,
@@ -266,7 +227,7 @@ fun NeuTextField(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    
+
     val animatedElevation by animateDpAsState(
         targetValue = if (isFocused) 8.dp else 4.dp,
         animationSpec = spring(
@@ -275,7 +236,7 @@ fun NeuTextField(
         ),
         label = "textFieldElevation"
     )
-    
+
     val borderColor by animateColorAsState(
         targetValue = if (isFocused) {
             colorScheme.accentColor.takeIf { it != Color.Unspecified }
@@ -310,7 +271,7 @@ fun NeuTextField(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             leadingIcon?.invoke()
-            
+
             Box(modifier = Modifier.weight(1f)) {
                 if (value.isEmpty() && placeholder.isNotEmpty()) {
                     Text(
@@ -320,7 +281,7 @@ fun NeuTextField(
                             ?: MaterialTheme.colorScheme.onSurface).copy(alpha = 0.5f)
                     )
                 }
-                
+
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
@@ -343,25 +304,13 @@ fun NeuTextField(
                     )
                 )
             }
-            
+
             trailingIcon?.invoke()
         }
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Switch
- * 
- * A toggle switch with neumorphic styling and spring animations.
- *
- * @param checked Whether the switch is checked
- * @param onCheckedChange Callback when checked state changes
- * @param modifier Modifier to be applied to the switch
- * @param enabled Whether the switch is enabled
- * @param colorScheme Neumorphic color scheme to use
- * @param checkedThumbColor Color of the thumb when checked
- * @param uncheckedThumbColor Color of the thumb when unchecked
- */
+/** Material 3 Expressive Neumorphic Switch. */
 @Composable
 fun NeuSwitch(
     checked: Boolean,
@@ -374,7 +323,7 @@ fun NeuSwitch(
     uncheckedThumbColor: Color = colorScheme.darkShadowColor
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    
+
     val thumbOffset by animateDpAsState(
         targetValue = if (checked) 24.dp else 0.dp,
         animationSpec = spring(
@@ -383,19 +332,15 @@ fun NeuSwitch(
         ),
         label = "switchThumbOffset"
     )
-    
+
     val thumbColor by animateColorAsState(
         targetValue = if (checked) checkedThumbColor else uncheckedThumbColor,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "switchThumbColor"
     )
-    
+
     val trackColor by animateColorAsState(
-        targetValue = if (checked) {
-            checkedThumbColor.copy(alpha = 0.3f)
-        } else {
-            colorScheme.backgroundColor
-        },
+        targetValue = if (checked) checkedThumbColor.copy(alpha = 0.3f) else colorScheme.backgroundColor,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "switchTrackColor"
     )
@@ -413,12 +358,13 @@ fun NeuSwitch(
                 strokeWidth = 3.dp
             )
             .background(trackColor, RoundedCornerShape(16.dp))
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
+            .toggleable(
+                value = checked,
                 enabled = enabled,
                 role = Role.Switch,
-                onClick = { onCheckedChange(!checked) }
+                interactionSource = interactionSource,
+                indication = null,
+                onValueChange = onCheckedChange
             )
             .padding(4.dp)
     ) {
@@ -437,19 +383,7 @@ fun NeuSwitch(
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Slider
- * 
- * A slider with neumorphic styling.
- *
- * @param value Current slider value (0f to 1f)
- * @param onValueChange Callback when value changes
- * @param modifier Modifier to be applied to the slider
- * @param enabled Whether the slider is enabled
- * @param colorScheme Neumorphic color scheme to use
- * @param trackHeight Height of the track
- * @param thumbSize Size of the thumb
- */
+/** Material 3 Expressive Neumorphic Slider. */
 @Composable
 fun NeuSlider(
     value: Float,
@@ -462,16 +396,19 @@ fun NeuSlider(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by rememberMinHoldPressedState(interactionSource)
-    
-    val animatedThumbSize by animateDpAsState(
-        targetValue = if (isPressed) thumbSize * 1.2f else thumbSize,
+    val density = LocalDensity.current
+    val thumbSizePx = with(density) { thumbSize.toPx() }
+    val coercedValue = value.coerceIn(0f, 1f)
+
+    val animatedThumbScale by animateFloatAsState(
+        targetValue = if (isPressed) 1.2f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
-        label = "sliderThumbSize"
+        label = "sliderThumbScale"
     )
-    
+
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
 
@@ -483,13 +420,40 @@ fun NeuSlider(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(thumbSize + 8.dp),
+                .height(thumbSize + 8.dp)
+                .progressSemantics(coercedValue, 0f..1f)
+                .pointerInput(enabled, thumbSize) {
+                    if (!enabled) return@pointerInput
+
+                    fun updateFromPosition(x: Float) {
+                        val availableWidth = (size.width.toFloat() - thumbSizePx).coerceAtLeast(0f)
+                        val trackX = (x - thumbSizePx / 2f).coerceIn(0f, availableWidth)
+                        val newValue = if (availableWidth > 0f) trackX / availableWidth else 0f
+                        onValueChange(newValue.coerceIn(0f, 1f))
+                    }
+
+                    detectTapGestures { offset ->
+                        updateFromPosition(offset.x)
+                    }
+                }
+                .pointerInput(enabled, thumbSize) {
+                    if (!enabled) return@pointerInput
+
+                    detectDragGestures(
+                        onDrag = { change, _ ->
+                            change.consume()
+                            val availableWidth = (size.width.toFloat() - thumbSizePx).coerceAtLeast(0f)
+                            val trackX = (change.position.x - thumbSizePx / 2f).coerceIn(0f, availableWidth)
+                            val newValue = if (availableWidth > 0f) trackX / availableWidth else 0f
+                            onValueChange(newValue.coerceIn(0f, 1f))
+                        }
+                    )
+                },
             contentAlignment = Alignment.CenterStart
         ) {
-            val availableWidth = maxWidth - thumbSize
-            val thumbOffset = availableWidth * value.coerceIn(0f, 1f)
-            
-            // Track background
+            val availableWidth = (maxWidth - thumbSize).coerceAtLeast(0.dp)
+            val thumbOffset = availableWidth * coercedValue
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -504,21 +468,19 @@ fun NeuSlider(
                     )
                     .background(colorScheme.backgroundColor, RoundedCornerShape(trackHeight / 2))
             )
-            
-            // Active track
+
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(value.coerceIn(0f, 1f))
+                    .width(availableWidth * coercedValue)
                     .height(trackHeight)
                     .clip(RoundedCornerShape(trackHeight / 2))
                     .background(accentColor.copy(alpha = 0.6f), RoundedCornerShape(trackHeight / 2))
             )
-            
-            // Thumb
+
             Box(
                 modifier = Modifier
                     .offset(x = thumbOffset)
-                    .size(animatedThumbSize)
+                    .size(thumbSize)
                     .neumorphic(
                         neuShape = Punched.Oval(),
                         lightShadowColor = colorScheme.lightShadowColor,
@@ -526,24 +488,13 @@ fun NeuSlider(
                         elevation = 6.dp
                     )
                     .background(accentColor, CircleShape)
+                    .scale(animatedThumbScale)
             )
         }
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Icon Button
- * 
- * A circular icon button with neumorphic styling.
- *
- * @param onClick Callback when button is clicked
- * @param modifier Modifier to be applied to the button
- * @param enabled Whether the button is enabled
- * @param selected Whether the button is in selected state (shows pressed neumorphic style)
- * @param colorScheme Neumorphic color scheme to use
- * @param size Size of the button
- * @param content Icon content
- */
+/** Material 3 Expressive Neumorphic Icon Button. */
 @Composable
 fun NeuIconButton(
     onClick: () -> Unit,
@@ -557,7 +508,7 @@ fun NeuIconButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by rememberMinHoldPressedState(interactionSource)
     val isHovered by interactionSource.collectIsHoveredAsState()
-    
+
     val scale by animateFloatAsState(
         targetValue = when {
             isPressed -> 0.9f
@@ -571,17 +522,12 @@ fun NeuIconButton(
         label = "iconButtonScale"
     )
 
-    // Crossfades between the raised (unselected) and recessed (selected)
-    // shadow treatments instead of cutting between them in a single frame -
-    // see the identical pattern (and rationale) in NeuChip above. This is
-    // what makes moving the selection between nav bar items (or any other
-    // use of `selected`) read as one smooth motion rather than a hard pop.
     val selectedAlpha by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "iconButtonSelectedAlpha"
     )
-    
+
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
     val unselectedContentColor = if (enabled) {
@@ -597,9 +543,6 @@ fun NeuIconButton(
             .size(size)
             .scale(scale)
     ) {
-        // Unselected (raised) layer. No clip here: the raised (Punched)
-        // shadow needs to extend past the circle's own bounds to look soft -
-        // clipping it away leaves a flat-looking ring instead.
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -614,7 +557,6 @@ fun NeuIconButton(
                 )
                 .background(colorScheme.backgroundColor, CircleShape)
         )
-        // Selected (recessed) layer
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -634,6 +576,10 @@ fun NeuIconButton(
             modifier = Modifier
                 .matchParentSize()
                 .clip(CircleShape)
+                .hoverable(
+                    interactionSource = interactionSource,
+                    enabled = enabled
+                )
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
@@ -648,7 +594,7 @@ fun NeuIconButton(
             } else {
                 unselectedContentColor
             }
-            
+
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 content()
             }
@@ -656,19 +602,7 @@ fun NeuIconButton(
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Chip
- * 
- * A chip/tag component with neumorphic styling.
- *
- * @param onClick Callback when chip is clicked
- * @param modifier Modifier to be applied to the chip
- * @param selected Whether the chip is selected
- * @param enabled Whether the chip is enabled
- * @param colorScheme Neumorphic color scheme to use
- * @param leadingIcon Leading icon composable
- * @param content Content of the chip
- */
+/** Material 3 Expressive Neumorphic Chip. */
 @Composable
 fun NeuChip(
     onClick: () -> Unit,
@@ -682,11 +616,6 @@ fun NeuChip(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by rememberMinHoldPressedState(interactionSource)
 
-    // Crossfades between the raised (unselected) and recessed (selected)
-    // shadow treatments instead of cutting between them in a single frame -
-    // the unselected layer fades out exactly as the selected layer fades in,
-    // so a selection change reads as one smooth motion, on both the chip
-    // that's losing selection and the one gaining it.
     val selectedAlpha by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -713,7 +642,6 @@ fun NeuChip(
             .scale(scale)
             .height(36.dp)
     ) {
-        // Unselected (raised) layer
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -727,7 +655,6 @@ fun NeuChip(
                 )
                 .background(colorScheme.backgroundColor, shape)
         )
-        // Selected (recessed) layer
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -756,8 +683,6 @@ fun NeuChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Fades and slides in/out instead of popping, so the selection
-            // change reads as one smooth motion rather than an abrupt cut.
             AnimatedVisibility(
                 visible = leadingIcon != null,
                 enter = fadeIn(tween(200)) + expandHorizontally(tween(200)),
@@ -777,17 +702,7 @@ fun NeuChip(
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Progress Bar
- * 
- * A horizontal progress bar with neumorphic styling.
- *
- * @param progress Current progress value (0f to 1f)
- * @param modifier Modifier to be applied to the progress bar
- * @param colorScheme Neumorphic color scheme to use
- * @param trackHeight Height of the track
- * @param animated Whether to animate the progress change
- */
+/** Material 3 Expressive Neumorphic Progress Bar. */
 @Composable
 fun NeuProgressBar(
     progress: Float,
@@ -796,8 +711,9 @@ fun NeuProgressBar(
     trackHeight: Dp = 12.dp,
     animated: Boolean = true
 ) {
+    val targetProgress = progress.coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
-        targetValue = progress.coerceIn(0f, 1f),
+        targetValue = targetProgress,
         animationSpec = if (animated) {
             spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -808,7 +724,7 @@ fun NeuProgressBar(
         },
         label = "progressAnimation"
     )
-    
+
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
 
@@ -825,10 +741,11 @@ fun NeuProgressBar(
                 strokeWidth = 3.dp
             )
             .background(colorScheme.backgroundColor, RoundedCornerShape(trackHeight / 2))
+            .progressSemantics(targetProgress, 0f..1f)
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(animatedProgress)
+                .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
                 .height(trackHeight)
                 .clip(RoundedCornerShape(trackHeight / 2))
                 .background(
@@ -839,17 +756,7 @@ fun NeuProgressBar(
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Circular Progress Indicator
- * 
- * A circular progress indicator with neumorphic styling and visual progress arc.
- *
- * @param progress Current progress value (0f to 1f), or null for indeterminate
- * @param modifier Modifier to be applied to the indicator
- * @param colorScheme Neumorphic color scheme to use
- * @param size Size of the indicator
- * @param strokeWidth Width of the progress stroke
- */
+/** Material 3 Expressive Neumorphic Circular Progress Indicator. */
 @Composable
 fun NeuCircularProgress(
     progress: Float?,
@@ -860,16 +767,31 @@ fun NeuCircularProgress(
 ) {
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
-    
+    val determinateTarget = progress?.coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
-        targetValue = (progress ?: 0f).coerceIn(0f, 1f),
+        targetValue = determinateTarget ?: 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
         ),
         label = "circularProgressAnimation"
     )
-    
+
+    val indeterminateRotation = if (progress == null) {
+        val transition = rememberInfiniteTransition(label = "circularProgressIndeterminate")
+        transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1100),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "indeterminateRotation"
+        ).value
+    } else {
+        0f
+    }
+
     Box(
         modifier = modifier
             .size(size)
@@ -884,16 +806,15 @@ fun NeuCircularProgress(
             .background(colorScheme.backgroundColor, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        // Draw progress arc
-        Canvas(modifier = Modifier.size(size - 8.dp)) {
-            val strokeWidthPx = strokeWidth.toPx()
-            val arcSize = Size(
-                this.size.width - strokeWidthPx,
-                this.size.height - strokeWidthPx
+        Canvas(modifier = Modifier.size((size - 8.dp).coerceAtLeast(0.dp))) {
+            val strokeWidthPx = strokeWidth.toPx().coerceAtMost(size.minDimension / 2f)
+            val arcDimension = (this.size.minDimension - strokeWidthPx).coerceAtLeast(0f)
+            val arcSize = Size(arcDimension, arcDimension)
+            val topLeft = Offset(
+                (this.size.width - arcDimension) / 2f,
+                (this.size.height - arcDimension) / 2f
             )
-            val topLeft = Offset(strokeWidthPx / 2, strokeWidthPx / 2)
-            
-            // Background track
+
             drawArc(
                 color = colorScheme.darkShadowColor.copy(alpha = 0.3f),
                 startAngle = -90f,
@@ -903,13 +824,24 @@ fun NeuCircularProgress(
                 size = arcSize,
                 style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
             )
-            
-            // Progress arc
-            if (progress != null && animatedProgress > 0f) {
+
+            if (progress != null) {
+                if (animatedProgress > 0f && strokeWidthPx > 0f) {
+                    drawArc(
+                        color = accentColor,
+                        startAngle = -90f,
+                        sweepAngle = 360f * animatedProgress,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+                    )
+                }
+            } else if (strokeWidthPx > 0f) {
                 drawArc(
                     color = accentColor,
-                    startAngle = -90f,
-                    sweepAngle = 360f * animatedProgress,
+                    startAngle = indeterminateRotation - 90f,
+                    sweepAngle = 110f,
                     useCenter = false,
                     topLeft = topLeft,
                     size = arcSize,
@@ -917,31 +849,19 @@ fun NeuCircularProgress(
                 )
             }
         }
-        
-        // Percentage text
+
         if (progress != null) {
             Text(
                 text = "${(animatedProgress * 100).toInt()}%",
                 style = MaterialTheme.typography.labelSmall,
                 color = accentColor,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                fontWeight = FontWeight.Bold
             )
         }
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Radio Button
- * 
- * A radio button with neumorphic styling.
- *
- * @param selected Whether this radio button is selected
- * @param onClick Callback when clicked
- * @param modifier Modifier to be applied to the radio button
- * @param enabled Whether the radio button is enabled
- * @param colorScheme Neumorphic color scheme to use
- * @param size Size of the radio button
- */
+/** Material 3 Expressive Neumorphic Radio Button. */
 @Composable
 fun NeuRadioButton(
     selected: Boolean,
@@ -953,10 +873,10 @@ fun NeuRadioButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by rememberMinHoldPressedState(interactionSource)
-    
+
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
-    
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
         animationSpec = spring(
@@ -965,7 +885,7 @@ fun NeuRadioButton(
         ),
         label = "radioScale"
     )
-    
+
     val innerSize by animateDpAsState(
         targetValue = if (selected) size * 0.5f else 0.dp,
         animationSpec = spring(
@@ -975,9 +895,6 @@ fun NeuRadioButton(
         label = "radioInnerSize"
     )
 
-    // Soft accent tint on selection instead of a hard colored ring - a solid
-    // 2dp border reads as standard Material, not neumorphic, and stood out
-    // against the rest of this library's soft-shadow-only styling.
     val backgroundColor by animateColorAsState(
         targetValue = if (selected) accentColor.copy(alpha = 0.15f) else colorScheme.backgroundColor,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -997,11 +914,12 @@ fun NeuRadioButton(
                 strokeWidth = 2.dp
             )
             .background(backgroundColor, CircleShape)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
+            .selectable(
+                selected = selected,
                 enabled = enabled,
                 role = Role.RadioButton,
+                interactionSource = interactionSource,
+                indication = null,
                 onClick = onClick
             ),
         contentAlignment = Alignment.Center
@@ -1015,18 +933,7 @@ fun NeuRadioButton(
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Checkbox
- * 
- * A checkbox with neumorphic styling.
- *
- * @param checked Whether this checkbox is checked
- * @param onCheckedChange Callback when checked state changes
- * @param modifier Modifier to be applied to the checkbox
- * @param enabled Whether the checkbox is enabled
- * @param colorScheme Neumorphic color scheme to use
- * @param size Size of the checkbox
- */
+/** Material 3 Expressive Neumorphic Checkbox. */
 @Composable
 fun NeuCheckbox(
     checked: Boolean,
@@ -1038,10 +945,10 @@ fun NeuCheckbox(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by rememberMinHoldPressedState(interactionSource)
-    
+
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
-    
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
         animationSpec = spring(
@@ -1050,13 +957,13 @@ fun NeuCheckbox(
         ),
         label = "checkboxScale"
     )
-    
+
     val backgroundColor by animateColorAsState(
         targetValue = if (checked) accentColor else colorScheme.backgroundColor,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "checkboxBackground"
     )
-    
+
     val borderColor by animateColorAsState(
         targetValue = if (checked) accentColor else colorScheme.darkShadowColor,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -1081,12 +988,13 @@ fun NeuCheckbox(
                 color = if (!checked) borderColor else Color.Transparent,
                 shape = RoundedCornerShape(6.dp)
             )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
+            .toggleable(
+                value = checked,
                 enabled = enabled,
                 role = Role.Checkbox,
-                onClick = { onCheckedChange(!checked) }
+                interactionSource = interactionSource,
+                indication = null,
+                onValueChange = onCheckedChange
             ),
         contentAlignment = Alignment.Center
     ) {
@@ -1095,23 +1003,13 @@ fun NeuCheckbox(
                 text = "✓",
                 color = Color.White,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                fontWeight = FontWeight.Bold
             )
         }
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic Floating Action Button
- * 
- * A floating action button with neumorphic styling.
- *
- * @param onClick Callback when button is clicked
- * @param modifier Modifier to be applied to the button
- * @param colorScheme Neumorphic color scheme to use
- * @param size Size of the FAB
- * @param content Content of the FAB
- */
+/** Material 3 Expressive Neumorphic Floating Action Button. */
 @Composable
 fun NeuFloatingActionButton(
     onClick: () -> Unit,
@@ -1123,10 +1021,10 @@ fun NeuFloatingActionButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by rememberMinHoldPressedState(interactionSource)
     val isHovered by interactionSource.collectIsHoveredAsState()
-    
+
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
-    
+
     val scale by animateFloatAsState(
         targetValue = when {
             isPressed -> 0.92f
@@ -1139,7 +1037,7 @@ fun NeuFloatingActionButton(
         ),
         label = "fabScale"
     )
-    
+
     val elevation by animateDpAsState(
         targetValue = when {
             isPressed -> 4.dp
@@ -1153,11 +1051,6 @@ fun NeuFloatingActionButton(
         label = "fabElevation"
     )
 
-    // Single neumorphic circle - matches the rest of the app's icon buttons
-    // (soft neutral background + accent-tinted icon) instead of the old
-    // nested "soft outer ring + solid flat inner circle" look, which read as
-    // a plain Material FAB bolted onto a neumorphic ring rather than a
-    // neumorphic component in its own right.
     Box(
         modifier = modifier
             .size(size)
@@ -1169,6 +1062,7 @@ fun NeuFloatingActionButton(
                 elevation = elevation
             )
             .background(colorScheme.backgroundColor, CircleShape)
+            .hoverable(interactionSource = interactionSource)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -1183,19 +1077,7 @@ fun NeuFloatingActionButton(
     }
 }
 
-/**
- * Material 3 Expressive Neumorphic SeekBar
- * 
- * An interactive draggable slider with neumorphic styling.
- *
- * @param value Current slider value (0f to 1f)
- * @param onValueChange Callback when value changes
- * @param modifier Modifier to be applied to the slider
- * @param enabled Whether the slider is enabled
- * @param colorScheme Neumorphic color scheme to use
- * @param trackHeight Height of the track
- * @param thumbSize Size of the thumb
- */
+/** Material 3 Expressive Neumorphic SeekBar. */
 @Composable
 fun NeuSeekBar(
     value: Float,
@@ -1209,55 +1091,59 @@ fun NeuSeekBar(
     var isDragging by remember { mutableFloatStateOf(0f) }
     val density = LocalDensity.current
     val thumbSizePx = with(density) { thumbSize.toPx() }
-    
+    val coercedValue = value.coerceIn(0f, 1f)
+
     val accentColor = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary
-    
-    val animatedThumbSize by animateDpAsState(
-        targetValue = if (isDragging > 0f) thumbSize * 1.15f else thumbSize,
+
+    // Keep the thumb's layout size constant while animating only its visual scale.
+    // Changing the layout size invalidated the shadow bitmap and forced a new blur
+    // at drag start, which was especially expensive after returning from background.
+    val animatedThumbScale by animateFloatAsState(
+        targetValue = if (isDragging > 0f) 1.15f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
-        label = "seekbarThumbSize"
+        label = "seekbarThumbScale"
     )
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .height(thumbSize + 16.dp)
+            .progressSemantics(coercedValue, 0f..1f)
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
-                
+
                 detectTapGestures { offset ->
-                    val availableWidth = size.width.toFloat() - thumbSizePx
-                    val tapX = (offset.x - thumbSizePx / 2).coerceIn(0f, availableWidth)
-                    val newValue = if (availableWidth > 0) tapX / availableWidth else 0f
+                    val availableWidth = (size.width.toFloat() - thumbSizePx).coerceAtLeast(0f)
+                    val tapX = (offset.x - thumbSizePx / 2f).coerceIn(0f, availableWidth)
+                    val newValue = if (availableWidth > 0f) tapX / availableWidth else 0f
                     onValueChange(newValue.coerceIn(0f, 1f))
                 }
             }
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
-                
+
                 detectDragGestures(
                     onDragStart = { isDragging = 1f },
                     onDragEnd = { isDragging = 0f },
                     onDragCancel = { isDragging = 0f },
                     onDrag = { change, _ ->
                         change.consume()
-                        val availableWidth = size.width.toFloat() - thumbSizePx
-                        val dragX = (change.position.x - thumbSizePx / 2).coerceIn(0f, availableWidth)
-                        val newValue = if (availableWidth > 0) dragX / availableWidth else 0f
+                        val availableWidth = (size.width.toFloat() - thumbSizePx).coerceAtLeast(0f)
+                        val dragX = (change.position.x - thumbSizePx / 2f).coerceIn(0f, availableWidth)
+                        val newValue = if (availableWidth > 0f) dragX / availableWidth else 0f
                         onValueChange(newValue.coerceIn(0f, 1f))
                     }
                 )
             },
         contentAlignment = Alignment.CenterStart
     ) {
-        val trackWidthDp = maxWidth - thumbSize
-        val thumbOffsetX = with(density) { (trackWidthDp * value.coerceIn(0f, 1f)).toPx() }
-        
-        // Track background
+        val trackWidthDp = (maxWidth - thumbSize).coerceAtLeast(0.dp)
+        val thumbOffsetX = with(density) { (trackWidthDp * coercedValue).toPx() }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1273,22 +1159,20 @@ fun NeuSeekBar(
                 )
                 .background(colorScheme.backgroundColor, RoundedCornerShape(trackHeight / 2))
         )
-        
-        // Active track
+
         Box(
             modifier = Modifier
                 .padding(start = thumbSize / 2)
-                .width(trackWidthDp * value.coerceIn(0f, 1f))
+                .width(trackWidthDp * coercedValue)
                 .height(trackHeight)
                 .clip(RoundedCornerShape(trackHeight / 2))
                 .background(accentColor.copy(alpha = 0.7f), RoundedCornerShape(trackHeight / 2))
         )
-        
-        // Thumb
+
         Box(
             modifier = Modifier
                 .offset { IntOffset(thumbOffsetX.roundToInt(), 0) }
-                .size(animatedThumbSize)
+                .size(thumbSize)
                 .neumorphic(
                     neuShape = Punched.Oval(),
                     lightShadowColor = colorScheme.lightShadowColor,
@@ -1297,6 +1181,7 @@ fun NeuSeekBar(
                 )
                 .background(accentColor, CircleShape)
                 .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                .scale(animatedThumbScale)
         )
     }
 }

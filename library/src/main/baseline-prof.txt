@@ -1,51 +1,35 @@
 # Baseline profile for composeNeumorphism (human-readable format).
 #
-# WHAT THIS IS: a hand-authored starting profile listing the library's
-# always-hot internal classes (the blur/cache/config machinery that runs on
-# essentially every neumorphic draw). Bundling it in the AAR means AGP
-# automatically merges it into any consuming app's own baseline profile at
-# build time - no setup required on the consumer's end beyond depending on
-# this library normally.
-#
-# WHAT THIS IS NOT: this file only contains class-level rules (plain
-# "Lpackage/Class;" lines), which tell ART "expect this class to be used
-# early, preload/verify it ahead of time." It deliberately does NOT contain
-# method-level H/S/P rules (e.g. "HSPLpackage/Class;->method(...)V") for the
-# neumorphic()/animatedNeumorphic()/springNeumorphic() composable functions,
-# because Compose's compiler generates synthetic default-argument dispatch
-# methods and mangled internal names for those - guessing their exact JVM
-# signatures by hand without access to the compiled .class files would very
-# likely produce wrong/unmatched rules. Class-level rules don't have that
-# problem, since they only need the class's own fully-qualified name.
-#
-# For a more complete, precise profile (including the hot composable
-# entry points), generate one from a real device/emulator using the
-# Macrobenchmark + Baseline Profile Gradle plugin against the demo app,
-# then merge its relevant lines in here. See:
-# https://developer.android.com/topic/performance/baselineprofiles/overview
+# This is a class-level starting profile for the library's renderer hot path.
+# A method-level profile should still be generated from a representative host
+# app with the Baseline Profile Gradle plugin and Macrobenchmark.
 
-# Blur pipeline - touched on every shadow (re)generation.
+# Blur pipeline
 Lme/nikhilchaudhari/library/internal/BlurMaker;
 Lme/nikhilchaudhari/library/internal/BlurConfig;
+Lme/nikhilchaudhari/library/internal/BlurEngine;
+Lme/nikhilchaudhari/library/internal/StackBlurEngine;
+Lme/nikhilchaudhari/library/internal/StackBlurWorkspace;
 
-# Shared app-wide BlurMaker holder - resolved on the very first neumorphic
-# component drawn in the app.
+# Renderer policy and thermal governor
+Lme/nikhilchaudhari/library/internal/NeuRenderPolicy;
+Lme/nikhilchaudhari/library/internal/NeuThermalPolicy;
+
+# Shared holder/cache
 Lme/nikhilchaudhari/library/internal/NeuBlurMakerHolder;
-
-# Shadow bitmap cache - touched on every shadow draw (cache hit or miss).
 Lme/nikhilchaudhari/library/internal/NeuShadowCache;
 
-# Runtime performance knobs - read on every blur/cache operation.
+# Runtime performance configuration
 Lme/nikhilchaudhari/library/NeuPerformanceConfig;
 
-# Core value/config types constructed on every neumorphic() call.
+# Core value/config types
 Lme/nikhilchaudhari/library/NeuInsets;
 Lme/nikhilchaudhari/library/LightSource;
 Lme/nikhilchaudhari/library/NeuAnimationType;
 Lme/nikhilchaudhari/library/NeuConstants;
 Lme/nikhilchaudhari/library/shapes/ShapeConfig;
 
-# Shape hierarchy - one of these is resolved on every neumorphic() call.
+# Shape hierarchy
 Lme/nikhilchaudhari/library/shapes/CornerType;
 Lme/nikhilchaudhari/library/shapes/CornerType$Oval;
 Lme/nikhilchaudhari/library/shapes/CornerType$Rounded;

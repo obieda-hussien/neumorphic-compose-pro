@@ -1,0 +1,29 @@
+plugins {
+    id 'com.android.test'
+    id 'androidx.baselineprofile'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'me.nikhilchaudhari.neumorphiccompose.baselineprofile'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 28
+        targetSdk 36
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    targetProjectPath ':app'
+}
+
+baselineProfile {
+    // API 33+ supports connected-device profile generation without root.
+    // CI already exercises API 35, so keep this generator aligned with that
+    // environment and with real-device generation when available.
+    useConnectedDevices = true
+}
+
+dependencies {
+    implementation libs.androidx.benchmark.macro.junit4
+}

@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.test'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'me.nikhilchaudhari.neumorphiccompose.macrobenchmark'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 36
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    targetProjectPath ':app'
+
+    buildTypes {
+        benchmark {
+            // Keep shrinking enabled so the benchmark/test APK matches the
+            // obfuscation state of the tested app's benchmark build type.
+            minifyEnabled true
+            matchingFallbacks = ['release']
+        }
+    }
+}
+
+dependencies {
+    implementation libs.androidx.benchmark.macro.junit4
+
+    // benchmark-macro-junit4 reaches these through optional/compile-time
+    // infrastructure. The benchmark APK is minified, so R8 needs the actual
+    // runtime implementations present rather than treating them as missing.
+    implementation libs.androidx.arch.core.common
+    implementation libs.androidx.arch.core.runtime
+    implementation libs.androidx.concurrent.futures
+    implementation libs.androidx.profileinstaller
+    implementation libs.androidx.startup.runtime
+    implementation libs.androidx.tracing
+    implementation libs.kotlinx.coroutines.core
+    implementation libs.google.guava
+    implementation libs.errorprone.annotations
+}
