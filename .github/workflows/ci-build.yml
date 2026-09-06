@@ -145,7 +145,7 @@ jobs:
         run: |
           adb kill-server || true
           adb start-server
-          adb devices
+          adb wait-for-device || true
 
       - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
@@ -157,13 +157,49 @@ jobs:
           cores: 1
           ram-size: 2048M
           emulator-boot-timeout: 1200
-          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -no-metrics -camera-back none
+          emulator-options: -no-window -no-snapshot-load -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect -no-metrics -camera-back none
           disable-animations: true
           pre-emulator-launch-script: |
             adb kill-server || true
             adb start-server
             adb devices
-          script: ./gradlew connectedDebugAndroidTest --no-daemon
+          script: |
+            set -u
+
+            wait_for_device() {
+              for attempt in $(seq 1 90); do
+                state="$(adb -s emulator-5554 get-state 2>/dev/null || true)"
+                boot="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+                if [ "$state" = "device" ] && [ "$boot" = "1" ]; then
+                  adb -s emulator-5554 shell pm path android >/dev/null 2>&1 && return 0
+                fi
+                sleep 2
+              done
+              echo "Emulator did not reach a usable ADB/package-manager state."
+              adb devices -l || true
+              return 1
+            }
+
+            wait_for_device
+            adb -s emulator-5554 shell input keyevent 82 || true
+
+            for attempt in 1 2 3; do
+              echo "Instrumented test attempt $attempt/3"
+              if ./gradlew connectedDebugAndroidTest --no-daemon --no-parallel --max-workers=1; then
+                exit 0
+              fi
+
+              echo "Instrumented tests failed on attempt $attempt. Reconnecting ADB before retry."
+              adb disconnect emulator-5554 || true
+              adb reconnect device || true
+              adb start-server || true
+              wait_for_device || true
+              sleep 5
+            done
+
+            echo "Instrumented tests failed after 3 attempts."
+            adb devices -l || true
+            exit 1
 
       - name: Upload Instrumented Test Results
         uses: actions/upload-artifact@v7
@@ -199,7 +235,7 @@ jobs:
         run: |
           adb kill-server || true
           adb start-server
-          adb devices
+          adb wait-for-device || true
 
       - name: Run Macrobenchmarks
         uses: reactivecircus/android-emulator-runner@v2
@@ -211,13 +247,49 @@ jobs:
           cores: 1
           ram-size: 2048M
           emulator-boot-timeout: 1200
-          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -no-metrics -camera-back none
+          emulator-options: -no-window -no-snapshot-load -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect -no-metrics -camera-back none
           disable-animations: true
           pre-emulator-launch-script: |
             adb kill-server || true
             adb start-server
             adb devices
-          script: ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest --no-daemon
+          script: |
+            set -u
+
+            wait_for_device() {
+              for attempt in $(seq 1 90); do
+                state="$(adb -s emulator-5554 get-state 2>/dev/null || true)"
+                boot="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+                if [ "$state" = "device" ] && [ "$boot" = "1" ]; then
+                  adb -s emulator-5554 shell pm path android >/dev/null 2>&1 && return 0
+                fi
+                sleep 2
+              done
+              echo "Emulator did not reach a usable ADB/package-manager state."
+              adb devices -l || true
+              return 1
+            }
+
+            wait_for_device
+            adb -s emulator-5554 shell input keyevent 82 || true
+
+            for attempt in 1 2 3; do
+              echo "Macrobenchmark attempt $attempt/3"
+              if ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest --no-daemon --no-parallel --max-workers=1; then
+                exit 0
+              fi
+
+              echo "Macrobenchmark failed on attempt $attempt. Reconnecting ADB before retry."
+              adb disconnect emulator-5554 || true
+              adb reconnect device || true
+              adb start-server || true
+              wait_for_device || true
+              sleep 5
+            done
+
+            echo "Macrobenchmarks failed after 3 attempts."
+            adb devices -l || true
+            exit 1
 
       - name: Upload Macrobenchmark Results
         uses: actions/upload-artifact@v7
