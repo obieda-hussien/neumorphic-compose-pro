@@ -44,14 +44,14 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
       - name: Upload Release APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-release-unsigned
           path: app/build/outputs/apk/release/app-release-unsigned.apk
@@ -81,7 +81,7 @@ jobs:
         run: ./gradlew test --no-daemon
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results
@@ -113,7 +113,7 @@ jobs:
         run: ./gradlew lint --no-daemon
 
       - name: Upload Lint Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: lint-results
@@ -156,7 +156,7 @@ jobs:
           script: ./gradlew connectedDebugAndroidTest --no-daemon
 
       - name: Upload Instrumented Test Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: instrumented-test-results
@@ -200,7 +200,7 @@ jobs:
           script: ./gradlew :macrobenchmark:connectedBenchmarkAndroidTest --no-daemon
 
       - name: Upload Macrobenchmark Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: macrobenchmark-results
