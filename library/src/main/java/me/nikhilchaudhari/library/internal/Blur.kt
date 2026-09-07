@@ -92,14 +92,10 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
                 blurConfig.height,
                 blurConfig.radius,
                 blurConfig.sampling,
-                if (NeuPerformanceConfig.thermalAwareRendering) {
-                    NeuThermalPolicy.effectiveWorkBudget(NeuPerformanceConfig.blurWorkBudget)
-                } else {
-                    NeuPerformanceConfig.blurWorkBudget
-                }
+                NeuRenderPolicy.effectiveWorkBudget()
             )
         } else {
-            blurConfig.sampling.coerceAtLeast(1)
+            NeuRenderPolicy.effectiveMinimumSampling(blurConfig.sampling)
         }
 
         val width = ((blurConfig.width + sampling - 1) / sampling).coerceAtLeast(1)
@@ -121,9 +117,6 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             else try {
                 engineLocked().blur(bitmap, scaledRadius)
             } catch (_: Exception) {
-                // Backend failures must never take down rendering. Fall back to the
-                // pure Kotlin/CPU implementation and recreate the legacy backend
-                // on the next operation if necessary.
                 blurEngine?.release()
                 blurEngine = null
                 StackBlurEngine().blur(bitmap, scaledRadius)
@@ -168,8 +161,12 @@ object NeuBlurMakerHolder {
 
     fun get(context: Context): BlurMaker {
         NeuShadowCache.registerMemoryPressureListener(context)
-        NeuShadowCache.restoreConfiguredBudget()
         NeuThermalPolicy.register(context)
+        NeuPowerPolicy.register(context)
+        // Intentionally do NOT restore the cache budget on every get():
+        // memory-pressure callbacks may have temporarily reduced it, and
+        // restoring early would undo that protection. Apps can still set
+        // NeuPerformanceConfig.shadowCacheBudgetKB explicitly.
         return instance ?: synchronized(this) {
             instance ?: BlurMaker(
                 context,
