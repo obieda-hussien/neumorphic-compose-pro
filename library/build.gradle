@@ -2,14 +2,15 @@ plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.plugin.compose'
-    id 'maven-publish'
 }
 
 ext {
-    PUBLISH_GROUP_ID = 'com.github.obieda-hussien.neumorphic-compose-pro'
-    PUBLISH_ARTIFACT_ID = 'library'
+    PUBLISH_GROUP_ID = 'io.github.obieda-hussien'
     PUBLISH_VERSION = '5.0.0'
+    PUBLISH_ARTIFACT_ID = 'library'
 }
+
+apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
 
 android {
     namespace 'me.nikhilchaudhari.library'
@@ -18,63 +19,72 @@ android {
     defaultConfig {
         minSdk 24
         targetSdk 36
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles "consumer-rules.pro"
         versionCode 7
         versionName '5.0.0'
+        testInstrumentationRunner = 'androidx.test.runner.AndroidJUnitRunner'
+        consumerProguardFiles('consumer-rules.pro')
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles(
+                getDefaultProguardFile('proguard-android-optimize.txt'),
+                'proguard-rules.pro'
+            )
         }
     }
+
+    publishing {
+        singleVariant("release") {}
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = '17'
     }
+
     buildFeatures {
         compose true
     }
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-            withJavadocJar()
+
+    testOptions {
+        unitTests {
+            returnDefaultValues = true
         }
     }
 }
 
 dependencies {
-    implementation platform(libs.compose.bom)
+    api platform(libs.compose.bom)
+
     implementation libs.androidx.core.ktx
-    implementation libs.compose.ui
-    implementation libs.compose.foundation
-    implementation libs.compose.material3
-    implementation libs.compose.ui.tooling.preview
+    implementation libs.androidx.appcompat
+    implementation libs.material
     implementation libs.androidx.profileinstaller
 
+    api libs.androidx.compose.ui
+    api libs.androidx.compose.ui.graphics
+
+    implementation libs.androidx.compose.ui.tooling.preview
+    implementation libs.androidx.compose.foundation
+
+    api libs.androidx.compose.material3
+
+    implementation libs.androidx.compose.animation
+    implementation libs.androidx.compose.animation.core
+    implementation libs.androidx.compose.animation.graphics
+
     testImplementation libs.junit
+
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso.core
-    androidTestImplementation platform(libs.compose.bom)
-    androidTestImplementation libs.compose.ui.test.junit4
-    debugImplementation libs.compose.ui.tooling
-}
+    androidTestImplementation libs.androidx.compose.ui.test.junit4
 
-afterEvaluate {
-    publishing {
-        publications {
-            release(MavenPublication) {
-                from components.release
-                groupId = PUBLISH_GROUP_ID
-                artifactId = PUBLISH_ARTIFACT_ID
-                version = PUBLISH_VERSION
-            }
-        }
-    }
+    debugImplementation libs.androidx.compose.ui.tooling
+    debugImplementation libs.androidx.compose.ui.test.manifest
 }
