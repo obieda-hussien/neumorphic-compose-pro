@@ -29,10 +29,12 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     private val workingBitmapPool = mutableMapOf<Long, Bitmap>()
 
     private fun createBlurEngine(): BlurEngine =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            StackBlurEngine()
-        } else {
-            RenderScriptBlurEngine(contextRef.get() ?: throw IllegalStateException("Application context is unavailable"), stateLock)
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> RenderEffectBlurEngine(stateLock)
+            else -> RenderScriptBlurEngine(
+                contextRef.get() ?: throw IllegalStateException("Application context is unavailable"),
+                stateLock
+            )
         }
 
     private fun engineLocked(): BlurEngine {
@@ -156,7 +158,6 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             software
         }.also { promoted ->
             if (promoted !== software && !software.isRecycled) {
-                // Keep software only if promotion failed; otherwise drop the CPU copy.
                 software.recycle()
             }
         }
@@ -185,10 +186,6 @@ object NeuBlurMakerHolder {
         NeuShadowCache.registerMemoryPressureListener(context)
         NeuThermalPolicy.register(context)
         NeuPowerPolicy.register(context)
-        // Intentionally do NOT restore the cache budget on every get():
-        // memory-pressure callbacks may have temporarily reduced it, and
-        // restoring early would undo that protection. Apps can still set
-        // NeuPerformanceConfig.shadowCacheBudgetKB explicitly.
         return instance ?: synchronized(this) {
             instance ?: BlurMaker(
                 context,
@@ -197,7 +194,6 @@ object NeuBlurMakerHolder {
         }
     }
 
-    /** Drop backend resources after backgrounding without throwing away hot rendered shadows. */
     fun onAppBackgrounded() {
         instance?.onAppBackgrounded()
     }
