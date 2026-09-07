@@ -78,6 +78,8 @@ dependencies {
     implementation libs.androidx.compose.animation
     implementation libs.androidx.compose.animation.core
     implementation libs.androidx.compose.animation.graphics
+    implementation libs.kotlinx.coroutines.core
+    implementation libs.kotlinx.coroutines.android
 
     testImplementation libs.junit
 
