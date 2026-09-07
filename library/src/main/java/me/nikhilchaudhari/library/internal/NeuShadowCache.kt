@@ -51,8 +51,6 @@ internal object NeuShadowCache {
                     level >= ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> clear()
                     level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> resizeBudget(1)
                     level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> resizeBudget(1024)
-                    // UI hidden is not memory pressure. Keep hot shadows and only release
-                    // backend resources that may not survive backgrounding cleanly.
                     level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ->
                         NeuBlurMakerHolder.onAppBackgrounded()
                 }
@@ -77,7 +75,10 @@ internal object NeuShadowCache {
         val adaptive = NeuPerformanceConfig.adaptiveBlurEnabled
         val workBudget = NeuPerformanceConfig.blurWorkBudget
         val thermalAware = NeuPerformanceConfig.thermalAwareRendering
+        val batteryAware = NeuPerformanceConfig.batteryAwareRendering
         val thermalTier = if (thermalAware) NeuThermalPolicy.cacheTier() else 0
+        val powerTier = if (batteryAware) NeuPowerPolicy.cacheTier() else 0
+        val perfClass = NeuRenderPolicy.resolvedPerformanceClass().name
         return buildString {
             append(pass).append('|')
             append(widthPx).append('x').append(heightPx).append('|')
@@ -87,6 +88,8 @@ internal object NeuShadowCache {
             append("a").append(if (adaptive) 1 else 0).append('|')
             append("w").append(workBudget).append('|')
             append("t").append(if (thermalAware) 1 else 0).append(thermalTier).append('|')
+            append("p").append(if (batteryAware) 1 else 0).append(powerTier).append('|')
+            append("pc").append(perfClass).append('|')
             append("l").append(lightColor.toArgbHex())
             append("d").append(darkColor.toArgbHex())
             append("c").append(cornerDescriptor).append('|')
