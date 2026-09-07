@@ -62,62 +62,84 @@ internal fun DrawScope.drawOnForeground(
     val strokeWidth = density.run { shapeConfig.strokeWidth.toPx() }.toInt()
     val lightOffset = getLightShadowOffset(shapeConfig.lightSource, elevation)
 
-    val cacheKey = NeuShadowCache.keyFor(
-        pass = "fg",
+    // Geometry masks are color-independent so theme changes do not force a re-blur.
+    val lightMaskKey = NeuShadowCache.keyFor(
+        pass = "fg-light-mask",
         widthPx = size.width.toInt(),
         heightPx = size.height.toInt(),
         elevationPx = elevation,
         strokeWidthPx = strokeWidth.toFloat(),
-        lightColor = shapeConfig.lightShadowColor,
-        darkColor = shapeConfig.darkShadowColor,
+        lightColor = Color.Transparent,
+        darkColor = Color.Transparent,
+        cornerDescriptor = cornerType.cacheDescriptor(),
+        lightSource = shapeConfig.lightSource.name
+    )
+    val darkMaskKey = NeuShadowCache.keyFor(
+        pass = "fg-dark-mask",
+        widthPx = size.width.toInt(),
+        heightPx = size.height.toInt(),
+        elevationPx = elevation,
+        strokeWidthPx = strokeWidth.toFloat(),
+        lightColor = Color.Transparent,
+        darkColor = Color.Transparent,
         cornerDescriptor = cornerType.cacheDescriptor(),
         lightSource = shapeConfig.lightSource.name
     )
 
-    val bitmap = NeuShadowCache.get(cacheKey) ?: run {
+    val lightMask = NeuShadowCache.get(lightMaskKey) ?: run {
         val lightShadowDrawable = GradientDrawable().apply {
             setSize(width, height)
-            setStroke(strokeWidth, shapeConfig.lightShadowColor.toArgb())
+            setStroke(strokeWidth, android.graphics.Color.WHITE)
             setBounds(0, 0, width, height)
             setColor(Color.Transparent.toArgb())
             setNeuShape(cornerType, ShadowForm.LightShadow, radius, shapeConfig.lightSource)
         }
+        generateSingleShadowMask(
+            size.width.toInt(),
+            size.height.toInt(),
+            lightShadowDrawable,
+            elevation,
+            blurMaker,
+            lightOffset
+        )?.also { NeuShadowCache.put(lightMaskKey, it) }
+    }
+
+    val darkMask = NeuShadowCache.get(darkMaskKey) ?: run {
         val darkShadowDrawable = GradientDrawable().apply {
             setSize(width, height)
-            setStroke(strokeWidth, shapeConfig.darkShadowColor.toArgb())
+            setStroke(strokeWidth, android.graphics.Color.WHITE)
             setColor(Color.Transparent.toArgb())
             setBounds(0, 0, width, height)
             setNeuShape(cornerType, ShadowForm.DarkShadow, radius, shapeConfig.lightSource)
         }
-
-        generateShadowBitmap(
+        generateSingleShadowMask(
             size.width.toInt(),
             size.height.toInt(),
-            lightShadowDrawable,
             darkShadowDrawable,
             elevation,
             blurMaker,
-            lightOffset
-        )?.also { NeuShadowCache.put(cacheKey, it) }
+            0f to 0f
+        )?.also { NeuShadowCache.put(darkMaskKey, it) }
     }
 
-    bitmap?.asImageBitmap()?.let { drawScope.drawImage(it) }
+    val lightFilter = ColorFilter.tint(shapeConfig.lightShadowColor, BlendMode.SrcIn)
+    val darkFilter = ColorFilter.tint(shapeConfig.darkShadowColor, BlendMode.SrcIn)
+
+    lightMask?.asImageBitmap()?.let { drawScope.drawImage(it, colorFilter = lightFilter) }
+    darkMask?.asImageBitmap()?.let { drawScope.drawImage(it, colorFilter = darkFilter) }
 }
 
-private fun generateShadowBitmap(
+private fun generateSingleShadowMask(
     w: Int,
     h: Int,
-    lightShadowDrawable: GradientDrawable,
-    darkShadowDrawable: GradientDrawable,
+    shadowDrawable: GradientDrawable,
     elevation: Float,
     blurMaker: BlurMaker,
-    lightOffset: Pair<Float, Float>
+    offset: Pair<Float, Float>
 ) = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).blurred(blurMaker) {
-    withTranslation(x = lightOffset.first, y = lightOffset.second) {
-        lightShadowDrawable.draw(this)
+    withTranslation(x = offset.first, y = offset.second) {
+        shadowDrawable.draw(this)
     }
-    // Dark shadow is drawn at origin for the inner shadow effect.
-    darkShadowDrawable.draw(this)
 }
 
 /* Flat shape - before the content draw scope. */
@@ -136,9 +158,6 @@ internal fun ContentDrawScope.drawOnBackground(
     val width = size.width.toInt()
     val height = size.height.toInt()
 
-    // Cache only the expensive blurred geometry/alpha mask. Light and dark
-    // colors are applied at draw time so theme/color changes no longer force a
-    // second blur of identical geometry.
     val maskCacheKey = NeuShadowCache.keyFor(
         pass = "bg-mask",
         widthPx = width,
@@ -162,8 +181,7 @@ internal fun ContentDrawScope.drawOnBackground(
             ?.also { NeuShadowCache.put(maskCacheKey, it) }
     }
 
-    val lightShadowBitmap = shadowMask?.asImageBitmap()
-    val darkShadowBitmap = lightShadowBitmap
+    val maskBitmap = shadowMask?.asImageBitmap()
     val lightColorFilter = ColorFilter.tint(shapeConfig.lightShadowColor, BlendMode.SrcIn)
     val darkColorFilter = ColorFilter.tint(shapeConfig.darkShadowColor, BlendMode.SrcIn)
 
@@ -181,13 +199,10 @@ internal fun ContentDrawScope.drawOnBackground(
         LightSource.BOTTOM_RIGHT -> Pair(-(horizontalInset + elevation), -(verticalInset + elevation))
     }
 
-    lightShadowBitmap?.let { bitmap ->
+    maskBitmap?.let { bitmap ->
         drawScope.inset(lightHInset, lightVInset) {
             drawImage(bitmap, colorFilter = lightColorFilter)
         }
-    }
-
-    darkShadowBitmap?.let { bitmap ->
         drawScope.inset(darkHInset, darkVInset) {
             drawImage(bitmap, colorFilter = darkColorFilter)
         }
