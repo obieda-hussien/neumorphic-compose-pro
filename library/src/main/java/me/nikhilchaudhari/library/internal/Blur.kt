@@ -111,7 +111,9 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             drawBitmap(source, 0f, 0f, paint)
         }
 
-        val scaledRadius = (blurConfig.radius / sampling).coerceIn(1, BlurConfig.MAX_RADIUS)
+        // Prefer rounded radius so light downsampling does not undershoot blur strength.
+        val scaledRadius = ((blurConfig.radius.toFloat() / sampling).roundToInt())
+            .coerceIn(1, BlurConfig.MAX_RADIUS)
         val blurBitmap = synchronized(stateLock) {
             if (released) null
             else try {
@@ -128,7 +130,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             return null
         }
 
-        val result = if (sampling == 1) {
+        val software = if (sampling == 1) {
             blurBitmap
         } else {
             val scaled = Bitmap.createScaledBitmap(blurBitmap, blurConfig.width, blurConfig.height, true)
@@ -136,8 +138,28 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             scaled
         }
 
-        if (bitmap !== result) releaseWorkingBitmap(bitmap)
-        return result
+        if (bitmap !== software) releaseWorkingBitmap(bitmap)
+        return promoteForDraw(software)
+    }
+
+    /**
+     * Upload immutable shadow bitmaps to the GPU when the platform supports it.
+     * Falls back to the software bitmap on any failure.
+     */
+    private fun promoteForDraw(software: Bitmap): Bitmap {
+        if (software.isRecycled) return software
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return software
+        if (software.config == Bitmap.Config.HARDWARE) return software
+        return try {
+            software.copy(Bitmap.Config.HARDWARE, false) ?: software
+        } catch (_: Exception) {
+            software
+        }.also { promoted ->
+            if (promoted !== software && !software.isRecycled) {
+                // Keep software only if promotion failed; otherwise drop the CPU copy.
+                software.recycle()
+            }
+        }
     }
 
     fun release() = synchronized(stateLock) {
