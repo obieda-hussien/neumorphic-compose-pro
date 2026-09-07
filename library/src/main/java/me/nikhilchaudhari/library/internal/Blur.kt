@@ -1,5 +1,6 @@
 package me.nikhilchaudhari.library.internal
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
 import android.os.Build
@@ -29,10 +30,12 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     private val workingBitmapPool = mutableMapOf<Long, Bitmap>()
 
     private fun createBlurEngine(): BlurEngine =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            StackBlurEngine()
-        } else {
-            RenderScriptBlurEngine(contextRef.get() ?: throw IllegalStateException("Application context is unavailable"), stateLock)
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> RenderEffectBlurEngine(stateLock)
+            else -> RenderScriptBlurEngine(
+                contextRef.get() ?: throw IllegalStateException("Application context is unavailable"),
+                stateLock
+            )
         }
 
     private fun engineLocked(): BlurEngine {
@@ -69,6 +72,15 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         }
     }
 
+    /** Hint the active engine that a size is about to be used heavily. */
+    fun preferSize(width: Int, height: Int) {
+        if (width <= 0 || height <= 0) return
+        synchronized(stateLock) {
+            if (released) return
+            engineLocked().preferSize(width, height)
+        }
+    }
+
     /** Release backend resources when the UI is hidden, while retaining cached shadows. */
     fun onAppBackgrounded() = synchronized(stateLock) {
         if (released) return@synchronized
@@ -92,14 +104,10 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
                 blurConfig.height,
                 blurConfig.radius,
                 blurConfig.sampling,
-                if (NeuPerformanceConfig.thermalAwareRendering) {
-                    NeuThermalPolicy.effectiveWorkBudget(NeuPerformanceConfig.blurWorkBudget)
-                } else {
-                    NeuPerformanceConfig.blurWorkBudget
-                }
+                NeuRenderPolicy.effectiveWorkBudget()
             )
         } else {
-            blurConfig.sampling.coerceAtLeast(1)
+            NeuRenderPolicy.effectiveMinimumSampling(blurConfig.sampling)
         }
 
         val width = ((blurConfig.width + sampling - 1) / sampling).coerceAtLeast(1)
@@ -115,15 +123,14 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             drawBitmap(source, 0f, 0f, paint)
         }
 
-        val scaledRadius = (blurConfig.radius / sampling).coerceIn(1, BlurConfig.MAX_RADIUS)
+        // Prefer rounded radius so light downsampling does not undershoot blur strength.
+        val scaledRadius = ((blurConfig.radius.toFloat() / sampling).roundToInt())
+            .coerceIn(1, BlurConfig.MAX_RADIUS)
         val blurBitmap = synchronized(stateLock) {
             if (released) null
             else try {
                 engineLocked().blur(bitmap, scaledRadius)
             } catch (_: Exception) {
-                // Backend failures must never take down rendering. Fall back to the
-                // pure Kotlin/CPU implementation and recreate the legacy backend
-                // on the next operation if necessary.
                 blurEngine?.release()
                 blurEngine = null
                 StackBlurEngine().blur(bitmap, scaledRadius)
@@ -135,7 +142,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             return null
         }
 
-        val result = if (sampling == 1) {
+        val software = if (sampling == 1) {
             blurBitmap
         } else {
             val scaled = Bitmap.createScaledBitmap(blurBitmap, blurConfig.width, blurConfig.height, true)
@@ -143,9 +150,31 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             scaled
         }
 
-        if (bitmap !== result) releaseWorkingBitmap(bitmap)
-        return result
+        if (bitmap !== software) releaseWorkingBitmap(bitmap)
+        return promoteForDraw(software)
     }
+
+    /**
+     * Upload immutable shadow bitmaps to the GPU when the platform supports it.
+     * Falls back to the software bitmap on any failure.
+     */
+    @SuppressLint("NewApi")
+    private fun promoteForDraw(software: Bitmap): Bitmap {
+        if (software.isRecycled) return software
+        // HARDWARE bitmaps require API 26. Guard + SuppressLint for lint minSdk 24.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return software
+        if (software.config == Bitmap.Config.HARDWARE) return software
+        return try {
+            software.copy(Bitmap.Config.HARDWARE, false) ?: software
+        } catch (_: Exception) {
+            software
+        }.also { promoted ->
+            if (promoted !== software && !software.isRecycled) {
+                software.recycle()
+            }
+        }
+    }
+
 
     fun release() = synchronized(stateLock) {
         if (released) return@synchronized
@@ -168,8 +197,8 @@ object NeuBlurMakerHolder {
 
     fun get(context: Context): BlurMaker {
         NeuShadowCache.registerMemoryPressureListener(context)
-        NeuShadowCache.restoreConfiguredBudget()
         NeuThermalPolicy.register(context)
+        NeuPowerPolicy.register(context)
         return instance ?: synchronized(this) {
             instance ?: BlurMaker(
                 context,
@@ -178,7 +207,6 @@ object NeuBlurMakerHolder {
         }
     }
 
-    /** Drop backend resources after backgrounding without throwing away hot rendered shadows. */
     fun onAppBackgrounded() {
         instance?.onAppBackgrounded()
     }

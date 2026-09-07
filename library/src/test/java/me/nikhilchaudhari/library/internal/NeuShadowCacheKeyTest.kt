@@ -1,20 +1,26 @@
 package me.nikhilchaudhari.library.internal
 
 import androidx.compose.ui.graphics.Color
+import me.nikhilchaudhari.library.NeuPerformanceClass
 import me.nikhilchaudhari.library.NeuPerformanceConfig
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class NeuShadowCacheKeyTest {
+    @Before
     @After
     fun resetPerformanceConfig() {
+        NeuPerformanceConfig.performanceClass = NeuPerformanceClass.BALANCED
         NeuPerformanceConfig.blurDownsampling = 2
         NeuPerformanceConfig.adaptiveBlurEnabled = true
         NeuPerformanceConfig.blurWorkBudget = 180_000L
         NeuPerformanceConfig.thermalAwareRendering = true
+        NeuPerformanceConfig.batteryAwareRendering = true
+        NeuPerformanceConfig.qualityHysteresisMs = 400L
     }
 
     private fun key(
@@ -65,6 +71,18 @@ class NeuShadowCacheKeyTest {
         val thermalAwareKey = key()
         NeuPerformanceConfig.thermalAwareRendering = false
         assertNotEquals(thermalAwareKey, key())
+    }
+    @Test fun `changing battery awareness changes the key`() {
+        NeuPerformanceConfig.batteryAwareRendering = true
+        val aware = key()
+        NeuPerformanceConfig.batteryAwareRendering = false
+        assertNotEquals(aware, key())
+    }
+    @Test fun `changing performance class changes the key`() {
+        NeuPerformanceConfig.performanceClass = NeuPerformanceClass.BALANCED
+        val balanced = key()
+        NeuPerformanceConfig.performanceClass = NeuPerformanceClass.BATTERY
+        assertNotEquals(balanced, key())
     }
 }
 

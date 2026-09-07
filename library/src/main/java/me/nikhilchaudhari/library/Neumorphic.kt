@@ -1,30 +1,45 @@
 package me.nikhilchaudhari.library
 
+import android.content.Context
+import android.os.Build
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.draw.DrawModifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.platform.InspectorInfo
-import androidx.compose.ui.platform.InspectorValueInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.debugInspectorInfo
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.nikhilchaudhari.library.internal.BlurMaker
 import me.nikhilchaudhari.library.internal.NeuBlurMakerHolder
+import me.nikhilchaudhari.library.internal.NeuPowerPolicy
 import me.nikhilchaudhari.library.internal.NeuRenderPolicy
+import me.nikhilchaudhari.library.internal.NeuThermalPolicy
 import me.nikhilchaudhari.library.shapes.NeuShape
 import me.nikhilchaudhari.library.shapes.Punched
+import me.nikhilchaudhari.library.shapes.ShadowGeneration
 import me.nikhilchaudhari.library.shapes.ShapeConfig
+import me.nikhilchaudhari.library.shapes.shadowStyleFor
+import java.util.concurrent.atomic.AtomicLong
 
 /** Insets configuration for neumorphic shadows. */
 @Immutable
@@ -65,31 +80,29 @@ fun Modifier.neumorphic(
     strokeWidth: Dp = 6.dp,
     elevation: Dp = 6.dp,
     lightSource: LightSource = LightSource.TOP_LEFT
-) = composed {
+) = composed(
+    inspectorInfo = debugInspectorInfo {
+        name = "neumorphic"
+        properties["neuInsets"] = neuInsets
+        properties["neuShape"] = neuShape
+        properties["elevation"] = elevation
+        properties["strokeWidth"] = strokeWidth
+        properties["lightShadowColor"] = lightShadowColor
+        properties["darkShadowColor"] = darkShadowColor
+        properties["lightSource"] = lightSource
+    }
+) {
     val context = LocalContext.current
-    val blurMaker = remember(context) { NeuBlurMakerHolder.get(context) }
-
     this.then(
-        NeumorphicModifier(
-            blurMaker,
-            neuInsets,
-            neuShape,
-            lightShadowColor,
-            darkShadowColor,
-            strokeWidth,
-            elevation,
-            lightSource,
-            inspectorInfo = debugInspectorInfo {
-                name = "neumorphic"
-                properties["context"] = context
-                properties["neuInsets"] = neuInsets
-                properties["neuShape"] = neuShape
-                properties["elevation"] = elevation
-                properties["strokeWidth"] = strokeWidth
-                properties["lightShadowColor"] = lightShadowColor
-                properties["darkShadowColor"] = darkShadowColor
-                properties["lightSource"] = lightSource
-            }
+        NeumorphicElement(
+            context = context.applicationContext ?: context,
+            insets = neuInsets,
+            neuShape = neuShape,
+            lightShadowColor = lightShadowColor,
+            darkShadowColor = darkShadowColor,
+            strokeWidth = strokeWidth,
+            elevation = elevation,
+            lightSource = lightSource
         )
     )
 }
@@ -155,8 +168,8 @@ fun Modifier.springNeumorphic(
                 label = "tweenElevationAnimation"
             )
         }
-        NeuAnimationType.NONE -> targetElevation.let {
-            androidx.compose.runtime.rememberUpdatedState(it)
+        NeuAnimationType.NONE -> {
+            rememberUpdatedState(targetElevation)
         }
     }
 
@@ -217,27 +230,231 @@ fun Modifier.expressiveNeumorphic(
     )
 }
 
-internal class NeumorphicModifier(
-    private val blurMaker: BlurMaker,
-    private val insets: NeuInsets,
-    private val neuShape: NeuShape,
-    private val lightShadowColor: Color,
-    private val darkShadowColor: Color,
-    private val strokeWidth: Dp,
-    private val elevation: Dp,
-    private val lightSource: LightSource,
-    inspectorInfo: InspectorInfo.() -> Unit
-) : DrawModifier, InspectorValueInfo(inspectorInfo) {
+private data class NeumorphicElement(
+    val context: Context,
+    val insets: NeuInsets,
+    val neuShape: NeuShape,
+    val lightShadowColor: Color,
+    val darkShadowColor: Color,
+    val strokeWidth: Dp,
+    val elevation: Dp,
+    val lightSource: LightSource
+) : ModifierNodeElement<NeumorphicNode>() {
+
+    override fun create(): NeumorphicNode =
+        NeumorphicNode(
+            context = context,
+            insets = insets,
+            neuShape = neuShape,
+            lightShadowColor = lightShadowColor,
+            darkShadowColor = darkShadowColor,
+            strokeWidth = strokeWidth,
+            elevation = elevation,
+            lightSource = lightSource
+        )
+
+    override fun update(node: NeumorphicNode) {
+        node.update(
+            context = context,
+            insets = insets,
+            neuShape = neuShape,
+            lightShadowColor = lightShadowColor,
+            darkShadowColor = darkShadowColor,
+            strokeWidth = strokeWidth,
+            elevation = elevation,
+            lightSource = lightSource
+        )
+    }
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "neumorphic"
+        properties["elevation"] = elevation
+        properties["strokeWidth"] = strokeWidth
+        properties["lightSource"] = lightSource
+        properties["neuShape"] = neuShape::class.simpleName
+    }
+}
+
+/**
+ * Production [DrawModifierNode] for neumorphic shadows.
+ *
+ * 1. Layout/style changes mint a monotonic request token.
+ * 2. Generation runs on [Dispatchers.Default] with power/thermal awareness.
+ * 3. Rapid successive requests (animation) are coalesced via debounce.
+ * 4. Completed workers publish only when their token still matches.
+ * 5. Draw path is never blocked; cold misses may still generate sync on first paint.
+ * 6. GPU backend receives preferSize hints for hot list-item dimensions.
+ */
+internal class NeumorphicNode(
+    context: Context,
+    private var insets: NeuInsets,
+    private var neuShape: NeuShape,
+    private var lightShadowColor: Color,
+    private var darkShadowColor: Color,
+    private var strokeWidth: Dp,
+    private var elevation: Dp,
+    private var lightSource: LightSource
+) : Modifier.Node(), DrawModifierNode {
+
+    private var appContext: Context = context.applicationContext ?: context
+    private val blurMaker: BlurMaker get() = NeuBlurMakerHolder.get(appContext)
+
+    private val requestToken = AtomicLong(0L)
+    private var runningJob: Job? = null
+    private var lastRequestKey: String? = null
+    private var lastSize: Size = Size.Zero
+    private var consecutiveRapidChanges: Int = 0
+    private var lastScheduleNs: Long = 0L
+
+    fun update(
+        context: Context,
+        insets: NeuInsets,
+        neuShape: NeuShape,
+        lightShadowColor: Color,
+        darkShadowColor: Color,
+        strokeWidth: Dp,
+        elevation: Dp,
+        lightSource: LightSource
+    ) {
+        appContext = context.applicationContext ?: context
+        this.insets = insets
+        this.neuShape = neuShape
+        this.lightShadowColor = lightShadowColor
+        this.darkShadowColor = darkShadowColor
+        this.strokeWidth = strokeWidth
+        this.elevation = elevation
+        this.lightSource = lightSource
+        lastRequestKey = null
+        invalidateDraw()
+    }
+
+    override fun onDetach() {
+        runningJob?.cancel()
+        runningJob = null
+        consecutiveRapidChanges = 0
+        super.onDetach()
+    }
 
     override fun ContentDrawScope.draw() {
         val shapeConfig = ShapeConfig(
-            insets,
-            elevation,
-            lightShadowColor,
-            darkShadowColor,
-            strokeWidth,
+            neuInsets = insets,
+            elevation = elevation,
+            lightShadowColor = lightShadowColor,
+            darkShadowColor = darkShadowColor,
+            strokeWidth = strokeWidth,
             lightSource = lightSource
         )
+
+        val widthPx = size.width.toInt()
+        val heightPx = size.height.toInt()
+        val requestKey = buildString {
+            append(widthPx).append('x').append(heightPx).append('|')
+            append(elevation.value).append('|')
+            append(strokeWidth.value).append('|')
+            append(lightSource.name).append('|')
+            append(neuShape::class.java.name).append('|')
+            append(lightShadowColor.value).append('|')
+            append(darkShadowColor.value)
+        }
+
+        val sizeChanged = lastSize != size
+        lastSize = size
+
+        if (requestKey != lastRequestKey || sizeChanged) {
+            lastRequestKey = requestKey
+            scheduleAsyncGeneration(
+                density = this,
+                widthPx = widthPx,
+                heightPx = heightPx,
+                shapeConfig = shapeConfig,
+                styleShape = neuShape
+            )
+        }
+
         neuShape.drawShadows(this, blurMaker, shapeConfig)
+    }
+
+    private fun scheduleAsyncGeneration(
+        density: Density,
+        widthPx: Int,
+        heightPx: Int,
+        shapeConfig: ShapeConfig,
+        styleShape: NeuShape
+    ) {
+        if (!isAttached || widthPx <= 0 || heightPx <= 0) return
+
+        // On pre-GPU devices (API < 31) background blur is RenderScript/CPU and
+        // competing with the UI thread hurts frame time. Prefer draw-path generation
+        // and only async-warm when the system is not under pressure.
+        val apiHasGpuBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        val underPressure = NeuThermalPolicy.cacheTier() >= 2 || NeuPowerPolicy.isPowerSave()
+        if (!apiHasGpuBlur && underPressure) return
+
+        val now = System.nanoTime()
+        val elapsedMs = (now - lastScheduleNs) / 1_000_000L
+        lastScheduleNs = now
+
+        if (elapsedMs < RAPID_CHANGE_WINDOW_MS) {
+            consecutiveRapidChanges++
+        } else {
+            consecutiveRapidChanges = 0
+        }
+
+        // During rapid layout/animation changes on CPU backends, wait for settle.
+        val debounceMs = when {
+            !apiHasGpuBlur && consecutiveRapidChanges >= 1 -> DEBOUNCE_CPU_MS
+            underPressure && consecutiveRapidChanges >= 2 -> DEBOUNCE_PRESSURE_MS
+            consecutiveRapidChanges >= 3 -> DEBOUNCE_ANIMATION_MS
+            else -> 0L
+        }
+
+        val token = requestToken.incrementAndGet()
+        runningJob?.cancel()
+
+        val style = shadowStyleFor(styleShape)
+        val maker = blurMaker
+        val densitySnapshot = Density(density.density, density.fontScale)
+        val configSnapshot = shapeConfig.copy()
+
+        if (apiHasGpuBlur) {
+            maker.preferSize(widthPx, heightPx)
+        }
+
+        runningJob = coroutineScope.launch(Dispatchers.Default) {
+            if (debounceMs > 0L) {
+                delay(debounceMs)
+                if (token != requestToken.get() || !isActive) return@launch
+            }
+
+            val produced = try {
+                ShadowGeneration.warmForShape(
+                    density = densitySnapshot,
+                    widthPx = widthPx,
+                    heightPx = heightPx,
+                    shapeConfig = configSnapshot,
+                    blurMaker = maker,
+                    style = style
+                )
+            } catch (_: Throwable) {
+                false
+            }
+
+            // Only invalidate when something new was actually cached — avoids
+            // extra draw frames after a warm hit or a failed generation.
+            if (!produced || token != requestToken.get()) return@launch
+            withContext(Dispatchers.Main.immediate) {
+                if (token == requestToken.get() && isAttached) {
+                    invalidateDraw()
+                }
+            }
+        }
+    }
+
+    companion object {
+        private const val RAPID_CHANGE_WINDOW_MS = 48L
+        private const val DEBOUNCE_ANIMATION_MS = 32L
+        private const val DEBOUNCE_PRESSURE_MS = 64L
+        /** Longer settle window on API < 31 where blur is CPU/RenderScript. */
+        private const val DEBOUNCE_CPU_MS = 80L
     }
 }
