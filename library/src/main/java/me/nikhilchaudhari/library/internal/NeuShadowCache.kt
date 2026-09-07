@@ -9,22 +9,59 @@ import android.graphics.Bitmap
 import android.util.LruCache
 import androidx.compose.ui.graphics.Color
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
 import me.nikhilchaudhari.library.NeuPerformanceConfig
 
+/**
+ * Two-level shadow cache:
+ * - hot: small access-ordered map that resists normal LRU eviction for repeated list items
+ * - main: size-budgeted LRU measured in KB
+ */
 internal object NeuShadowCache {
+    private const val MAX_HOT_ENTRIES = 32
+    private const val PROMOTE_AFTER_HITS = 2
+
     private val cache = object : LruCache<String, Bitmap>(6 * 1024) {
         override fun sizeOf(key: String, value: Bitmap): Int = (value.byteCount / 1024).coerceAtLeast(1)
     }
 
+    private val hotLock = Any()
+    private val hot = object : LinkedHashMap<String, Bitmap>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?): Boolean {
+            return size > MAX_HOT_ENTRIES
+        }
+    }
+    private val hitCounts = HashMap<String, Int>(64)
+
     private val memoryCallbackRegistered = AtomicBoolean(false)
+    private val hits = AtomicInteger(0)
+    private val misses = AtomicInteger(0)
 
     fun get(key: String): Bitmap? {
-        val bitmap = cache.get(key) ?: return null
-        return if (bitmap.isRecycled) {
+        synchronized(hotLock) {
+            hot[key]?.let { bitmap ->
+                if (bitmap.isRecycled) {
+                    hot.remove(key)
+                } else {
+                    hits.incrementAndGet()
+                    return bitmap
+                }
+            }
+        }
+        val bitmap = cache.get(key)
+        if (bitmap == null) {
+            misses.incrementAndGet()
+            return null
+        }
+        if (bitmap.isRecycled) {
             cache.remove(key)
-            null
-        } else bitmap
+            misses.incrementAndGet()
+            return null
+        }
+        hits.incrementAndGet()
+        maybePromote(key, bitmap)
+        return bitmap
     }
 
     fun put(key: String, bitmap: Bitmap) {
@@ -32,13 +69,24 @@ internal object NeuShadowCache {
         cache.put(key, bitmap)
     }
 
-    fun clear() = cache.evictAll()
-    fun resizeBudget(newBudgetKB: Int) { cache.resize(newBudgetKB.coerceAtLeast(1)) }
+    fun clear() {
+        cache.evictAll()
+        synchronized(hotLock) {
+            hot.clear()
+            hitCounts.clear()
+        }
+    }
+
+    fun resizeBudget(newBudgetKB: Int) {
+        cache.resize(newBudgetKB.coerceAtLeast(1))
+    }
 
     /** Restore the application's configured cache budget after temporary memory pressure. */
     fun restoreConfiguredBudget() {
         cache.resize(NeuPerformanceConfig.shadowCacheBudgetKB.coerceAtLeast(1))
     }
+
+    fun snapshotStats(): Pair<Int, Int> = hits.get() to misses.get()
 
     fun registerMemoryPressureListener(context: Context) {
         if (!memoryCallbackRegistered.compareAndSet(false, true)) return
@@ -49,7 +97,13 @@ internal object NeuShadowCache {
             override fun onTrimMemory(level: Int) {
                 when {
                     level >= ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> clear()
-                    level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> resizeBudget(1)
+                    level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> {
+                        synchronized(hotLock) {
+                            hot.clear()
+                            hitCounts.clear()
+                        }
+                        resizeBudget(1)
+                    }
                     level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> resizeBudget(1024)
                     level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ->
                         NeuBlurMakerHolder.onAppBackgrounded()
@@ -94,6 +148,19 @@ internal object NeuShadowCache {
             append("d").append(darkColor.toArgbHex())
             append("c").append(cornerDescriptor).append('|')
             append("ls").append(lightSource)
+        }
+    }
+
+    private fun maybePromote(key: String, bitmap: Bitmap) {
+        synchronized(hotLock) {
+            val count = (hitCounts[key] ?: 0) + 1
+            hitCounts[key] = count
+            if (count >= PROMOTE_AFTER_HITS) {
+                hot[key] = bitmap
+            }
+            if (hitCounts.size > MAX_HOT_ENTRIES * 4) {
+                hitCounts.clear()
+            }
         }
     }
 
