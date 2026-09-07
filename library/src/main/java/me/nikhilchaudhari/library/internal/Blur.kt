@@ -71,6 +71,15 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         }
     }
 
+    /** Hint the active engine that a size is about to be used heavily. */
+    fun preferSize(width: Int, height: Int) {
+        if (width <= 0 || height <= 0) return
+        synchronized(stateLock) {
+            if (released) return
+            engineLocked().preferSize(width, height)
+        }
+    }
+
     /** Release backend resources when the UI is hidden, while retaining cached shadows. */
     fun onAppBackgrounded() = synchronized(stateLock) {
         if (released) return@synchronized

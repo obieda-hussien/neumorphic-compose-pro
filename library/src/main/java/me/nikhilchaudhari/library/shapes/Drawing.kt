@@ -92,9 +92,9 @@ internal fun DrawScope.drawOnForeground(
             setStroke(strokeWidth, android.graphics.Color.WHITE)
             setBounds(0, 0, width, height)
             setColor(Color.Transparent.toArgb())
-            setNeuShape(cornerType, ShadowForm.LightShadow, radius, shapeConfig.lightSource)
+            setNeuShapeForGeneration(cornerType, ShadowForm.LightShadow, radius, shapeConfig.lightSource)
         }
-        generateSingleShadowMask(
+        generateSingleShadowMaskForGeneration(
             size.width.toInt(),
             size.height.toInt(),
             lightShadowDrawable,
@@ -110,9 +110,9 @@ internal fun DrawScope.drawOnForeground(
             setStroke(strokeWidth, android.graphics.Color.WHITE)
             setColor(Color.Transparent.toArgb())
             setBounds(0, 0, width, height)
-            setNeuShape(cornerType, ShadowForm.DarkShadow, radius, shapeConfig.lightSource)
+            setNeuShapeForGeneration(cornerType, ShadowForm.DarkShadow, radius, shapeConfig.lightSource)
         }
-        generateSingleShadowMask(
+        generateSingleShadowMaskForGeneration(
             size.width.toInt(),
             size.height.toInt(),
             darkShadowDrawable,
@@ -129,7 +129,7 @@ internal fun DrawScope.drawOnForeground(
     darkMask?.asImageBitmap()?.let { drawScope.drawImage(it, colorFilter = darkFilter) }
 }
 
-private fun generateSingleShadowMask(
+internal fun generateSingleShadowMaskForGeneration(
     w: Int,
     h: Int,
     shadowDrawable: GradientDrawable,
@@ -175,9 +175,9 @@ internal fun ContentDrawScope.drawOnBackground(
             setColor(Color.White.toArgb())
             setSize(width, height)
             setBounds(0, 0, width, height)
-            setNeuShape(cornerType, ShadowForm.Default, radius, shapeConfig.lightSource)
+            setNeuShapeForGeneration(cornerType, ShadowForm.Default, radius, shapeConfig.lightSource)
         }
-        maskDrawable.toBlurredBitmap(width, height, elevation, blurMaker)
+        maskDrawable.toBlurredBitmapForGeneration(width, height, elevation, blurMaker)
             ?.also { NeuShadowCache.put(maskCacheKey, it) }
     }
 
@@ -209,7 +209,7 @@ internal fun ContentDrawScope.drawOnBackground(
     }
 }
 
-private fun Drawable.toBlurredBitmap(
+internal fun Drawable.toBlurredBitmapForGeneration(
     w: Int,
     h: Int,
     elevation: Float,
@@ -238,7 +238,7 @@ internal sealed class ShadowForm {
     object DarkShadow : ShadowForm()
 }
 
-private fun GradientDrawable.setNeuShape(
+internal fun GradientDrawable.setNeuShapeForGeneration(
     cornerType: CornerType,
     shadowForm: ShadowForm,
     radius: Float,
