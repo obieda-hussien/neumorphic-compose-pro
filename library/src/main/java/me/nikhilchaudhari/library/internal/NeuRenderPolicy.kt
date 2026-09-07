@@ -4,6 +4,8 @@ import androidx.compose.ui.unit.Dp
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.round
+import me.nikhilchaudhari.library.NeuPerformanceClass
+import me.nikhilchaudhari.library.NeuPerformanceConfig
 
 /**
  * Deterministic policies that keep expensive shadow rendering bounded.
@@ -20,6 +22,54 @@ internal object NeuRenderPolicy {
     private const val ELEVATION_QUANTUM_DP = 0.5f
     private const val UPSCALE_WORK_FACTOR = 0.125
 
+    fun resolvedPerformanceClass(): NeuPerformanceClass {
+        return when (val configured = NeuPerformanceConfig.performanceClass) {
+            NeuPerformanceClass.AUTO -> {
+                val thermal = if (NeuPerformanceConfig.thermalAwareRendering) {
+                    NeuThermalPolicy.cacheTier()
+                } else {
+                    0
+                }
+                val powerSave = NeuPerformanceConfig.batteryAwareRendering && NeuPowerPolicy.isPowerSave()
+                if (powerSave || thermal >= 3) NeuPerformanceClass.BATTERY else NeuPerformanceClass.BALANCED
+            }
+            else -> configured
+        }
+    }
+
+    /**
+     * Combine app budget with thermal, power-save, and performance-class multipliers.
+     */
+    fun effectiveWorkBudget(): Long {
+        var budget = NeuPerformanceConfig.blurWorkBudget.coerceAtLeast(1L)
+        when (resolvedPerformanceClass()) {
+            NeuPerformanceClass.QUALITY -> budget = (budget * 140L) / 100L
+            NeuPerformanceClass.BALANCED, NeuPerformanceClass.AUTO -> Unit
+            NeuPerformanceClass.BATTERY -> budget = (budget * 55L) / 100L
+        }
+        if (NeuPerformanceConfig.thermalAwareRendering) {
+            budget = NeuThermalPolicy.effectiveWorkBudget(budget)
+        }
+        if (NeuPerformanceConfig.batteryAwareRendering) {
+            budget = NeuPowerPolicy.effectiveWorkBudget(budget)
+        }
+        return budget.coerceAtLeast(1L)
+    }
+
+    fun effectiveMinimumSampling(configuredSampling: Int): Int {
+        val base = configuredSampling.coerceAtLeast(MIN_SAMPLING)
+        val powerFloor = if (NeuPerformanceConfig.batteryAwareRendering) {
+            NeuPowerPolicy.minimumSamplingFloor()
+        } else {
+            MIN_SAMPLING
+        }
+        val classFloor = when (resolvedPerformanceClass()) {
+            NeuPerformanceClass.BATTERY -> 2
+            else -> MIN_SAMPLING
+        }
+        return maxOf(base, powerFloor, classFloor)
+    }
+
     fun effectiveBlurSampling(
         width: Int,
         height: Int,
@@ -27,13 +77,10 @@ internal object NeuRenderPolicy {
         configuredSampling: Int,
         workBudget: Long = DEFAULT_BLUR_WORK_BUDGET
     ): Int {
-        val base = configuredSampling.coerceAtLeast(MIN_SAMPLING)
+        val base = effectiveMinimumSampling(configuredSampling)
         val safeWidth = width.coerceAtLeast(1)
         val safeHeight = height.coerceAtLeast(1)
         val safeRadius = radius.coerceIn(1, BlurConfig.MAX_RADIUS)
-        // A non-positive budget is an invalid/unset value. Treat it as the
-        // policy default rather than as a one-operation budget that forces the
-        // renderer to its lowest quality tier.
         val safeBudget = if (workBudget > 0L) workBudget else DEFAULT_BLUR_WORK_BUDGET
 
         if (base > MAX_AUTO_SAMPLING) return base
