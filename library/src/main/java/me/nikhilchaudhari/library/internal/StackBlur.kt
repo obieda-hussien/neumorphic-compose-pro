@@ -121,7 +121,15 @@ internal fun Bitmap.stackBlurInPlace(radius: Int): Bitmap? {
         }
         yi = x; stackpointer = radius; y = 0
         while (y < h) {
-            pix[yi] = -0x1000000 and pix[yi] or (dv[rsum] shl 16) or (dv[gsum] shl 8) or dv[bsum]
+            val nr = dv[rsum]
+            val ng = dv[gsum]
+            val nb = dv[bsum]
+            // Soften alpha from the blurred intensity so white-on-transparent masks
+            // do not keep hard silhouette edges after RGB-only stack blur.
+            val srcA = (pix[yi] ushr 24) and 0xff
+            val intensity = (nr + ng + nb) / 3
+            val na = if (srcA == 0 || srcA == 255) intensity else srcA
+            pix[yi] = (na shl 24) or (nr shl 16) or (ng shl 8) or nb
             rsum -= routsum; gsum -= goutsum; bsum -= boutsum
             stackstart = stackpointer - radius + div
             sir = stack[stackstart % div]
