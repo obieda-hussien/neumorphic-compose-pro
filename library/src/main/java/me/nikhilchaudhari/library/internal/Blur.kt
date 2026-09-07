@@ -1,5 +1,6 @@
 package me.nikhilchaudhari.library.internal
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
 import android.os.Build
@@ -157,8 +158,10 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
      * Upload immutable shadow bitmaps to the GPU when the platform supports it.
      * Falls back to the software bitmap on any failure.
      */
+    @SuppressLint("NewApi")
     private fun promoteForDraw(software: Bitmap): Bitmap {
         if (software.isRecycled) return software
+        // HARDWARE bitmaps require API 26. Guard + SuppressLint for lint minSdk 24.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return software
         if (software.config == Bitmap.Config.HARDWARE) return software
         return try {
@@ -171,6 +174,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             }
         }
     }
+
 
     fun release() = synchronized(stateLock) {
         if (released) return@synchronized

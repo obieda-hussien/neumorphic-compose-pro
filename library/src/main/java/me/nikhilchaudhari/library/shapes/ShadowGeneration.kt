@@ -20,14 +20,15 @@ internal object ShadowGeneration {
         shapeConfig: ShapeConfig,
         blurMaker: BlurMaker,
         style: ShadowStyle
-    ) {
-        if (widthPx <= 0 || heightPx <= 0) return
-        when (style) {
+    ): Boolean {
+        if (widthPx <= 0 || heightPx <= 0) return false
+        return when (style) {
             ShadowStyle.BACKGROUND -> warmBackground(density, widthPx, heightPx, shapeConfig, blurMaker)
             ShadowStyle.FOREGROUND -> warmForeground(density, widthPx, heightPx, shapeConfig, blurMaker)
             ShadowStyle.BOTH -> {
-                warmBackground(density, widthPx, heightPx, shapeConfig, blurMaker)
-                warmForeground(density, widthPx, heightPx, shapeConfig, blurMaker)
+                val a = warmBackground(density, widthPx, heightPx, shapeConfig, blurMaker)
+                val b = warmForeground(density, widthPx, heightPx, shapeConfig, blurMaker)
+                a || b
             }
         }
     }
@@ -38,7 +39,7 @@ internal object ShadowGeneration {
         heightPx: Int,
         shapeConfig: ShapeConfig,
         blurMaker: BlurMaker
-    ) {
+    ): Boolean {
         val elevation = with(density) { shapeConfig.elevation.toPx() }
         val cornerType = shapeConfig.cornerType
         val radius = if (cornerType is CornerType.Rounded) with(density) { cornerType.radius.toPx() } else 0f
@@ -53,7 +54,7 @@ internal object ShadowGeneration {
             cornerDescriptor = cornerType.cacheDescriptor(),
             lightSource = shapeConfig.lightSource.name
         )
-        if (NeuShadowCache.get(key) != null) return
+        if (NeuShadowCache.get(key) != null) return false
 
         val maskDrawable = GradientDrawable().apply {
             setColor(Color.White.toArgb())
@@ -61,8 +62,9 @@ internal object ShadowGeneration {
             setBounds(0, 0, widthPx, heightPx)
             setNeuShapeForGeneration(cornerType, ShadowForm.Default, radius, shapeConfig.lightSource)
         }
-        maskDrawable.toBlurredBitmapForGeneration(widthPx, heightPx, elevation, blurMaker)
+        val produced = maskDrawable.toBlurredBitmapForGeneration(widthPx, heightPx, elevation, blurMaker)
             ?.also { NeuShadowCache.put(key, it) }
+        return produced != null
     }
 
     private fun warmForeground(
@@ -71,7 +73,7 @@ internal object ShadowGeneration {
         heightPx: Int,
         shapeConfig: ShapeConfig,
         blurMaker: BlurMaker
-    ) {
+    ): Boolean {
         val elevation = with(density) { shapeConfig.elevation.toPx() }
         val cornerType = shapeConfig.cornerType
         val radius = if (cornerType is CornerType.Rounded) with(density) { cornerType.radius.toPx() } else 0f
@@ -103,6 +105,7 @@ internal object ShadowGeneration {
             lightSource = shapeConfig.lightSource.name
         )
 
+        var produced = false
         if (NeuShadowCache.get(lightKey) == null) {
             val lightShadowDrawable = GradientDrawable().apply {
                 setSize(width, height)
@@ -113,7 +116,10 @@ internal object ShadowGeneration {
             }
             generateSingleShadowMaskForGeneration(
                 widthPx, heightPx, lightShadowDrawable, elevation, blurMaker, lightOffset
-            )?.also { NeuShadowCache.put(lightKey, it) }
+            )?.also {
+                NeuShadowCache.put(lightKey, it)
+                produced = true
+            }
         }
 
         if (NeuShadowCache.get(darkKey) == null) {
@@ -126,8 +132,12 @@ internal object ShadowGeneration {
             }
             generateSingleShadowMaskForGeneration(
                 widthPx, heightPx, darkShadowDrawable, elevation, blurMaker, 0f to 0f
-            )?.also { NeuShadowCache.put(darkKey, it) }
+            )?.also {
+                NeuShadowCache.put(darkKey, it)
+                produced = true
+            }
         }
+        return produced
     }
 }
 

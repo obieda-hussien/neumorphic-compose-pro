@@ -1,6 +1,7 @@
 package me.nikhilchaudhari.library
 
 import android.content.Context
+import android.os.Build
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -382,6 +383,13 @@ internal class NeumorphicNode(
     ) {
         if (!isAttached || widthPx <= 0 || heightPx <= 0) return
 
+        // On pre-GPU devices (API < 31) background blur is RenderScript/CPU and
+        // competing with the UI thread hurts frame time. Prefer draw-path generation
+        // and only async-warm when the system is not under pressure.
+        val apiHasGpuBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        val underPressure = NeuThermalPolicy.cacheTier() >= 2 || NeuPowerPolicy.isPowerSave()
+        if (!apiHasGpuBlur && underPressure) return
+
         val now = System.nanoTime()
         val elapsedMs = (now - lastScheduleNs) / 1_000_000L
         lastScheduleNs = now
@@ -392,6 +400,14 @@ internal class NeumorphicNode(
             consecutiveRapidChanges = 0
         }
 
+        // During rapid layout/animation changes on CPU backends, wait for settle.
+        val debounceMs = when {
+            !apiHasGpuBlur && consecutiveRapidChanges >= 1 -> DEBOUNCE_CPU_MS
+            underPressure && consecutiveRapidChanges >= 2 -> DEBOUNCE_PRESSURE_MS
+            consecutiveRapidChanges >= 3 -> DEBOUNCE_ANIMATION_MS
+            else -> 0L
+        }
+
         val token = requestToken.incrementAndGet()
         runningJob?.cancel()
 
@@ -400,14 +416,9 @@ internal class NeumorphicNode(
         val densitySnapshot = Density(density.density, density.fontScale)
         val configSnapshot = shapeConfig.copy()
 
-        val underPressure = NeuThermalPolicy.cacheTier() >= 2 || NeuPowerPolicy.isPowerSave()
-        val debounceMs = when {
-            underPressure && consecutiveRapidChanges >= 2 -> DEBOUNCE_PRESSURE_MS
-            consecutiveRapidChanges >= 3 -> DEBOUNCE_ANIMATION_MS
-            else -> 0L
+        if (apiHasGpuBlur) {
+            maker.preferSize(widthPx, heightPx)
         }
-
-        maker.preferSize(widthPx, heightPx)
 
         runningJob = coroutineScope.launch(Dispatchers.Default) {
             if (debounceMs > 0L) {
@@ -415,7 +426,7 @@ internal class NeumorphicNode(
                 if (token != requestToken.get() || !isActive) return@launch
             }
 
-            try {
+            val produced = try {
                 ShadowGeneration.warmForShape(
                     density = densitySnapshot,
                     widthPx = widthPx,
@@ -425,10 +436,12 @@ internal class NeumorphicNode(
                     style = style
                 )
             } catch (_: Throwable) {
-                // Never crash the UI pipeline from a background blur failure.
+                false
             }
 
-            if (token != requestToken.get()) return@launch
+            // Only invalidate when something new was actually cached — avoids
+            // extra draw frames after a warm hit or a failed generation.
+            if (!produced || token != requestToken.get()) return@launch
             withContext(Dispatchers.Main.immediate) {
                 if (token == requestToken.get() && isAttached) {
                     invalidateDraw()
@@ -441,5 +454,7 @@ internal class NeumorphicNode(
         private const val RAPID_CHANGE_WINDOW_MS = 48L
         private const val DEBOUNCE_ANIMATION_MS = 32L
         private const val DEBOUNCE_PRESSURE_MS = 64L
+        /** Longer settle window on API < 31 where blur is CPU/RenderScript. */
+        private const val DEBOUNCE_CPU_MS = 80L
     }
 }

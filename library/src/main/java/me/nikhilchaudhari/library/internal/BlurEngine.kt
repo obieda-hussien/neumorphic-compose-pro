@@ -14,6 +14,7 @@ import android.graphics.Shader
 import android.hardware.HardwareBuffer
 import android.media.ImageReader
 import android.os.Build
+import androidx.annotation.RequiresApi
 import android.renderscript.Allocation
 import android.renderscript.Element
 import android.renderscript.RenderScript
@@ -51,6 +52,7 @@ internal class StackBlurEngine : BlurEngine {
  * - Preferred-size hints from Modifier.Node keep hot dimensions warm
  * - Safe fallback to [StackBlurEngine] on any failure
  */
+@RequiresApi(Build.VERSION_CODES.S)
 internal class RenderEffectBlurEngine(
     private val lock: Any
 ) : BlurEngine {
@@ -128,12 +130,13 @@ internal class RenderEffectBlurEngine(
         val passes = computePasses(radius)
         if (passes.size > 1) multiPassBlurs.incrementAndGet()
 
+        // singlePassLocked always returns a software ARGB_8888 bitmap (or null).
+        // Never reference Bitmap.Config.HARDWARE here — minSdk is 24 and lint flags it.
         var current: Bitmap = bitmap
         var ownedIntermediate: Bitmap? = null
 
         try {
-            for ((index, passRadius) in passes.withIndex()) {
-                val isLast = index == passes.lastIndex
+            for (passRadius in passes) {
                 val source = current
                 val blurred = singlePassLocked(session, source, passRadius.toFloat())
                     ?: return null
@@ -143,24 +146,8 @@ internal class RenderEffectBlurEngine(
                 }
                 ownedIntermediate = if (blurred !== bitmap) blurred else null
                 current = blurred
-
-                if (!isLast && current.config == Bitmap.Config.HARDWARE) {
-                    val software = current.copy(Bitmap.Config.ARGB_8888, false) ?: return null
-                    if (ownedIntermediate != null && ownedIntermediate !== bitmap) {
-                        ownedIntermediate.recycle()
-                    }
-                    ownedIntermediate = software
-                    current = software
-                }
             }
-
-            val finalBitmap = current
-            if (finalBitmap.config == Bitmap.Config.HARDWARE) {
-                val software = finalBitmap.copy(Bitmap.Config.ARGB_8888, false)
-                if (finalBitmap !== bitmap) finalBitmap.recycle()
-                return software
-            }
-            return finalBitmap
+            return current
         } finally {
             // Do not recycle the original input.
         }
