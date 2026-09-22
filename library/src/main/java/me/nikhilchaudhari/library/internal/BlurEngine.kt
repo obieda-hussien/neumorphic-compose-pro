@@ -81,6 +81,7 @@ internal class RenderEffectBlurEngine(
 
     override fun preferSize(width: Int, height: Int) {
         if (width <= 0 || height <= 0) return
+        if (preferredSizes.size >= 32) preferredSizes.clear()
         preferredSizes[width to height] = System.nanoTime()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             synchronized(lock) {
@@ -216,27 +217,7 @@ internal class RenderEffectBlurEngine(
         val exactKey = width to height
         sessionsBySize[exactKey]?.let { return it }
 
-        val targetArea = width.toLong() * height
-        var best: Session? = null
-        var bestScore = Double.MAX_VALUE
-        for ((_, session) in sessionsBySize) {
-            val area = session.width.toLong() * session.height
-            val areaRatio = area.toDouble() / targetArea.coerceAtLeast(1)
-            if (areaRatio < 0.85 || areaRatio > 1.15) continue
-            val aspectDiff = kotlin.math.abs(
-                session.width.toDouble() / session.height - width.toDouble() / height
-            )
-            if (aspectDiff > 0.08) continue
-            val score = kotlin.math.abs(areaRatio - 1.0) + aspectDiff
-            if (score < bestScore) {
-                bestScore = score
-                best = session
-            }
-        }
-        if (best != null && best.width >= width && best.height >= height) {
-            return best
-        }
-
+        // Exact dimensions only: pooled larger render targets change bitmap geometry.
         if (sessionsBySize.size >= MAX_SESSIONS) {
             evictOneLocked()
         }

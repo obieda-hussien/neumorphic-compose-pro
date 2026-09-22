@@ -58,7 +58,10 @@ class StartupAndRenderingBenchmark {
             startupMode = StartupMode.COLD,
             setupBlock = { pressHome() }
         ) {
-            startActivityAndWait()
+            startActivityAndWait(android.content.Intent().apply {
+                setClassName("me.nikhilchaudhari.neumorphiccompose", "me.nikhilchaudhari.neumorphiccompose.MainActivity")
+                putExtra("screen", "stress")
+            })
             device.waitForIdle()
 
             val centerX = device.displayWidth / 2
@@ -66,7 +69,7 @@ class StartupAndRenderingBenchmark {
             val bottom = (device.displayHeight * 0.82f).toInt()
 
             repeat(3) {
-                device.swipe(centerX, bottom, centerX, top, 900)
+                device.swipe(centerX, bottom, centerX, top, 30)
             }
             device.waitForIdle()
         }

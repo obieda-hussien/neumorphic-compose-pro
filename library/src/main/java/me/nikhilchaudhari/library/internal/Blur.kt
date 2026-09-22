@@ -151,7 +151,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         }
 
         if (bitmap !== software) releaseWorkingBitmap(bitmap)
-        return promoteForDraw(software)
+        return software // Keep one software result; avoid GPU readback followed by re-upload.
     }
 
     /**

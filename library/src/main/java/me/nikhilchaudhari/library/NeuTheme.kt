@@ -57,7 +57,7 @@ object NeuTheme {
     @Composable
     @ReadOnlyComposable
     fun colorScheme(): NeuColorScheme {
-        return if (isSystemInDarkTheme()) DarkColorScheme else LightColorScheme
+        return LocalNeuColors.current ?: if (isSystemInDarkTheme()) DarkColorScheme else LightColorScheme
     }
 
     /**
@@ -68,7 +68,7 @@ object NeuTheme {
         lightShadowColor: Color = backgroundColor.lighten(0.15f),
         darkShadowColor: Color = backgroundColor.darken(0.15f),
         accentColor: Color = Color.Unspecified,
-        onBackgroundColor: Color = if (backgroundColor.luminance() > 0.5f) Color.Black else Color.White
+        onBackgroundColor: Color = if (backgroundColor.luminance() > 0.179f) Color.Black else Color.White
     ) = NeuColorScheme(
         backgroundColor = backgroundColor,
         lightShadowColor = lightShadowColor,
@@ -233,7 +233,7 @@ fun Color.toNeuColorScheme(): NeuTheme.NeuColorScheme {
         backgroundColor = this,
         lightShadowColor = light,
         darkShadowColor = dark,
-        onBackgroundColor = if (this.luminance() > 0.5f) Color.Black else Color.White
+        onBackgroundColor = if (this.luminance() > 0.179f) Color.Black else Color.White
     )
 }
 

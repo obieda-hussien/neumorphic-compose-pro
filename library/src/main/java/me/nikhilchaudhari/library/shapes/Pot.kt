@@ -19,6 +19,8 @@ import me.nikhilchaudhari.library.internal.BlurMaker
  * __/               \__
  */
 open class Pot(private val cornerType: CornerType = CornerType.Rounded()) : NeuShape {
+    override val shadowCorners: CornerType get() = cornerType
+
 
     override fun drawShadows(
         drawScope: ContentDrawScope,
@@ -56,6 +58,7 @@ internal fun DrawScope.clippedToCornerType(cornerType: CornerType, block: DrawSc
     val bounds = Rect(Offset.Zero, size)
     val path = Path()
     when (cornerType) {
+        is CornerType.Custom -> path.addPath(cornerType.path)
         is CornerType.Oval -> path.addOval(bounds)
         is CornerType.Rounded -> {
             val radiusPx = density.run { cornerType.radius.toPx() }

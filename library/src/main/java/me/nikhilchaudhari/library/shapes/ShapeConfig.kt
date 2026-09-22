@@ -12,6 +12,7 @@ import me.nikhilchaudhari.library.NeuInsets
  */
 sealed class CornerType {
     object Oval: CornerType()
+    data class Custom(val path: androidx.compose.ui.graphics.Path, val identity: String): CornerType()
     data class Rounded(val radius: Dp = 12.dp) : CornerType()
 }
 
@@ -25,5 +26,6 @@ data class ShapeConfig(
     val darkShadowColor: Color,
     val strokeWidth: Dp,
     var cornerType: CornerType = CornerType.Rounded(),
-    val lightSource: LightSource = LightSource.TOP_LEFT
+    val lightSource: LightSource = LightSource.TOP_LEFT,
+    val allowSynchronousGeneration: Boolean = true
 )

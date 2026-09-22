@@ -13,6 +13,8 @@ import me.nikhilchaudhari.library.internal.BlurMaker
  *
  */
 open class Pressed(private val cornerType: CornerType = CornerType.Rounded()) : NeuShape {
+    override val shadowCorners: CornerType get() = cornerType
+
 
     override fun drawShadows(
         drawScope: ContentDrawScope,

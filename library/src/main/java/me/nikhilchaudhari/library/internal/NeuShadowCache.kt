@@ -1,112 +1,71 @@
-@file:Suppress("DEPRECATION")
-
 package me.nikhilchaudhari.library.internal
 
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.util.LruCache
 import androidx.compose.ui.graphics.Color
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
 import me.nikhilchaudhari.library.NeuPerformanceConfig
 
-/**
- * Two-level shadow cache:
- * - hot: small access-ordered map that resists normal LRU eviction for repeated list items
- * - main: size-budgeted LRU measured in KB
- */
+/** One byte budget covers probation and protected entries; bitmaps are never recycled on eviction. */
 internal object NeuShadowCache {
-    private const val MAX_HOT_ENTRIES = 32
-    private const val PROMOTE_AFTER_HITS = 2
+    private data class Entry(val bitmap: Bitmap, var hits: Int = 0)
+    private val entries = LinkedHashMap<String, Entry>(32, 0.75f, true)
+    private var budgetBytes = 6L * 1024 * 1024
+    private var usedBytes = 0L
+    private var hits = 0
+    private var misses = 0
+    private val registered = AtomicBoolean()
+    private fun cost(bitmap: Bitmap) = bitmap.byteCount.toLong()
 
-    private val cache = object : LruCache<String, Bitmap>(6 * 1024) {
-        override fun sizeOf(key: String, value: Bitmap): Int = (value.byteCount / 1024).coerceAtLeast(1)
+    @Synchronized fun peek(key: String): Bitmap? = entries[key]?.bitmap?.takeUnless { it.isRecycled }
+    @Synchronized fun get(key: String): Bitmap? {
+        val entry = entries[key]
+        if (entry == null || entry.bitmap.isRecycled) { misses++; return null }
+        hits++
+        entry.hits = (entry.hits + 1).coerceAtMost(2)
+        return entry.bitmap
     }
-
-    private val hotLock = Any()
-    private val hot = object : LinkedHashMap<String, Bitmap>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?): Boolean {
-            return size > MAX_HOT_ENTRIES
+    @Synchronized fun put(key: String, bitmap: Bitmap) {
+        if (bitmap.isRecycled || cost(bitmap) > budgetBytes) return
+        entries.remove(key)?.let { usedBytes -= cost(it.bitmap) }
+        entries[key] = Entry(bitmap)
+        usedBytes += cost(bitmap)
+        trim()
+    }
+    private fun trim() {
+        while (usedBytes > budgetBytes && entries.isNotEmpty()) {
+            val victim = entries.entries.firstOrNull { it.value.hits < 2 } ?: entries.entries.first()
+            usedBytes -= cost(victim.value.bitmap)
+            entries.remove(victim.key)
         }
     }
-    private val hitCounts = HashMap<String, Int>(64)
-
-    private val memoryCallbackRegistered = AtomicBoolean(false)
-    private val hits = AtomicInteger(0)
-    private val misses = AtomicInteger(0)
-
-    fun get(key: String): Bitmap? {
-        synchronized(hotLock) {
-            hot[key]?.let { bitmap ->
-                if (bitmap.isRecycled) {
-                    hot.remove(key)
-                } else {
-                    hits.incrementAndGet()
-                    return bitmap
-                }
-            }
-        }
-        val bitmap = cache.get(key)
-        if (bitmap == null) {
-            misses.incrementAndGet()
-            return null
-        }
-        if (bitmap.isRecycled) {
-            cache.remove(key)
-            misses.incrementAndGet()
-            return null
-        }
-        hits.incrementAndGet()
-        maybePromote(key, bitmap)
-        return bitmap
+    @Synchronized fun clear() { entries.clear(); usedBytes = 0 }
+    @Synchronized fun resizeBudget(newBudgetKB: Int) {
+        budgetBytes = newBudgetKB.coerceAtLeast(1).toLong() * 1024
+        trim()
     }
-
-    fun put(key: String, bitmap: Bitmap) {
-        if (bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) return
-        cache.put(key, bitmap)
-    }
-
-    fun clear() {
-        cache.evictAll()
-        synchronized(hotLock) {
-            hot.clear()
-            hitCounts.clear()
-        }
-    }
-
-    fun resizeBudget(newBudgetKB: Int) {
-        cache.resize(newBudgetKB.coerceAtLeast(1))
-    }
-
-    /** Restore the application's configured cache budget after temporary memory pressure. */
-    fun restoreConfiguredBudget() {
-        cache.resize(NeuPerformanceConfig.shadowCacheBudgetKB.coerceAtLeast(1))
-    }
-
-    fun snapshotStats(): Pair<Int, Int> = hits.get() to misses.get()
+    fun restoreConfiguredBudget() = resizeBudget(NeuPerformanceConfig.shadowCacheBudgetKB)
+    @Synchronized fun snapshotStats(): Pair<Int, Int> = hits to misses
+    @Synchronized fun memoryStats(): Pair<Long, Long> = usedBytes to budgetBytes
 
     fun registerMemoryPressureListener(context: Context) {
-        if (!memoryCallbackRegistered.compareAndSet(false, true)) return
-        val applicationContext = context.applicationContext ?: context
-        applicationContext.registerComponentCallbacks(object : ComponentCallbacks2 {
+        if (!registered.compareAndSet(false, true)) return
+        (context.applicationContext ?: context).registerComponentCallbacks(object : ComponentCallbacks2 {
             override fun onConfigurationChanged(newConfig: Configuration) = Unit
             override fun onLowMemory() = clear()
             override fun onTrimMemory(level: Int) {
+                // UI_HIDDEN (20) is not RUNNING_CRITICAL (15); handle independently.
+                if (level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+                    NeuBlurMakerHolder.onAppBackgrounded()
+                    return
+                }
                 when {
-                    level >= ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> clear()
-                    level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> {
-                        synchronized(hotLock) {
-                            hot.clear()
-                            hitCounts.clear()
-                        }
-                        resizeBudget(1)
-                    }
+                    level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> clear()
+                    level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> resizeBudget(1)
                     level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> resizeBudget(1024)
-                    level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ->
-                        NeuBlurMakerHolder.onAppBackgrounded()
                 }
             }
         })
@@ -148,19 +107,6 @@ internal object NeuShadowCache {
             append("d").append(darkColor.toArgbHex())
             append("c").append(cornerDescriptor).append('|')
             append("ls").append(lightSource)
-        }
-    }
-
-    private fun maybePromote(key: String, bitmap: Bitmap) {
-        synchronized(hotLock) {
-            val count = (hitCounts[key] ?: 0) + 1
-            hitCounts[key] = count
-            if (count >= PROMOTE_AFTER_HITS) {
-                hot[key] = bitmap
-            }
-            if (hitCounts.size > MAX_HOT_ENTRIES * 4) {
-                hitCounts.clear()
-            }
         }
     }
 

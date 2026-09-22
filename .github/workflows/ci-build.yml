@@ -122,7 +122,11 @@ jobs:
           retention-days: 14
 
   instrumentation:
-    name: Instrumented & Compose UI Tests
+    name: Instrumented & Compose UI Tests (API ${{ matrix.api }})
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [24, 29, 34]
     runs-on: ubuntu-22.04
     timeout-minutes: 45
 
@@ -152,7 +156,7 @@ jobs:
       - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: ${{ matrix.api }}
           target: default
           arch: x86_64
           force-avd-creation: true
@@ -165,7 +169,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: instrumented-test-results
+          name: instrumented-test-results-${{ matrix.api }}
           path: |
             **/build/outputs/androidTest-results/
             **/build/reports/androidTests/
@@ -173,7 +177,11 @@ jobs:
           if-no-files-found: ignore
 
   benchmark:
-    name: Macrobenchmark Smoke Tests
+    name: Macrobenchmark Smoke Tests (API ${{ matrix.api }})
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 34]
     runs-on: ubuntu-22.04
     timeout-minutes: 45
 
@@ -203,7 +211,7 @@ jobs:
       - name: Run Macrobenchmarks
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: ${{ matrix.api }}
           target: default
           arch: x86_64
           force-avd-creation: true
@@ -216,7 +224,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: macrobenchmark-results
+          name: macrobenchmark-results-${{ matrix.api }}
           path: |
             macrobenchmark/build/outputs/
             macrobenchmark/build/reports/

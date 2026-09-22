@@ -50,6 +50,8 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -99,7 +101,7 @@ fun NeuButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     shape: Shape = RoundedCornerShape(16.dp),
     neuShape: NeuShape = Punched.Rounded(16.dp),
     elevation: Dp = 8.dp,
@@ -177,7 +179,7 @@ fun NeuButton(
 @Composable
 fun NeuCard(
     modifier: Modifier = Modifier,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     shape: Shape = RoundedCornerShape(20.dp),
     neuShape: NeuShape = Punched.Rounded(20.dp),
     elevation: Dp = 10.dp,
@@ -216,15 +218,20 @@ fun NeuTextField(
     placeholder: String = "",
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     shape: Shape = RoundedCornerShape(12.dp),
     textStyle: TextStyle = LocalTextStyle.current,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = true,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
-    visualTransformation: VisualTransformation = VisualTransformation.None
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    isError: Boolean = false,
+    supportingText: String? = null,
+    maxLength: Int? = null,
+    label: String? = null
 ) {
+    require(maxLength == null || maxLength >= 0)
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
@@ -238,7 +245,7 @@ fun NeuTextField(
     )
 
     val borderColor by animateColorAsState(
-        targetValue = if (isFocused) {
+        targetValue = if (isError) MaterialTheme.colorScheme.error else if (isFocused) {
             colorScheme.accentColor.takeIf { it != Color.Unspecified }
                 ?: MaterialTheme.colorScheme.primary
         } else {
@@ -248,11 +255,13 @@ fun NeuTextField(
         label = "textFieldBorder"
     )
 
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    label?.let { Text(it, color = if (isError) MaterialTheme.colorScheme.error else LocalContentColor.current) }
     Box(
-        modifier = modifier
+        modifier = Modifier
             .clip(shape)
             .neumorphic(
-                neuShape = Pressed.Rounded(12.dp),
+                neuShape = remember(shape) { me.nikhilchaudhari.library.shapes.ComposeNeuShape(shape, recessed = true) },
                 lightShadowColor = colorScheme.lightShadowColor,
                 darkShadowColor = colorScheme.darkShadowColor,
                 elevation = animatedElevation,
@@ -260,7 +269,7 @@ fun NeuTextField(
             )
             .background(colorScheme.backgroundColor, shape)
             .border(
-                width = if (isFocused) 2.dp else 0.dp,
+                width = if (isFocused || isError) 2.dp else 0.dp,
                 color = borderColor,
                 shape = shape
             )
@@ -284,8 +293,11 @@ fun NeuTextField(
 
                 BasicTextField(
                     value = value,
-                    onValueChange = onValueChange,
-                    modifier = Modifier.fillMaxWidth(),
+                    onValueChange = { next -> if (maxLength == null || next.length <= maxLength) onValueChange(next) },
+                    modifier = Modifier.fillMaxWidth().semantics {
+                        if (isError) error(supportingText ?: "Invalid input")
+                        label?.let { contentDescription = it }
+                    },
                     enabled = enabled,
                     readOnly = readOnly,
                     textStyle = textStyle.copy(
@@ -308,6 +320,13 @@ fun NeuTextField(
             trailingIcon?.invoke()
         }
     }
+    if (supportingText != null || maxLength != null) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(supportingText.orEmpty(), Modifier.weight(1f), color = if (isError) MaterialTheme.colorScheme.error else LocalContentColor.current)
+            maxLength?.let { Text("${value.length}/$it") }
+        }
+    }
+    }
 }
 
 /** Material 3 Expressive Neumorphic Switch. */
@@ -317,7 +336,7 @@ fun NeuSwitch(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     checkedThumbColor: Color = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary,
     uncheckedThumbColor: Color = colorScheme.darkShadowColor
@@ -390,7 +409,7 @@ fun NeuSlider(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     trackHeight: Dp = 8.dp,
     thumbSize: Dp = 24.dp
 ) {
@@ -501,7 +520,7 @@ fun NeuIconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     selected: Boolean = false,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     size: Dp = 48.dp,
     content: @Composable () -> Unit
 ) {
@@ -609,7 +628,7 @@ fun NeuChip(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     leadingIcon: @Composable (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
@@ -707,7 +726,7 @@ fun NeuChip(
 fun NeuProgressBar(
     progress: Float,
     modifier: Modifier = Modifier,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     trackHeight: Dp = 12.dp,
     animated: Boolean = true
 ) {
@@ -761,7 +780,7 @@ fun NeuProgressBar(
 fun NeuCircularProgress(
     progress: Float?,
     modifier: Modifier = Modifier,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     size: Dp = 64.dp,
     strokeWidth: Dp = 6.dp
 ) {
@@ -868,7 +887,7 @@ fun NeuRadioButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     size: Dp = 24.dp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -940,7 +959,7 @@ fun NeuCheckbox(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     size: Dp = 24.dp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -1014,7 +1033,7 @@ fun NeuCheckbox(
 fun NeuFloatingActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     size: Dp = 56.dp,
     content: @Composable () -> Unit
 ) {
@@ -1084,7 +1103,7 @@ fun NeuSeekBar(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     trackHeight: Dp = 10.dp,
     thumbSize: Dp = 28.dp
 ) {

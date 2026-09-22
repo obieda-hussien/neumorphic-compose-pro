@@ -24,6 +24,7 @@ import kotlin.math.roundToInt
  * [NeuShadowCache] cache keys.
  */
 internal fun CornerType.cacheDescriptor(): String = when (this) {
+    is CornerType.Custom -> identity
     is CornerType.Oval -> "Oval"
     is CornerType.Rounded -> "Rounded(${radius.value})"
 }
@@ -86,14 +87,8 @@ internal fun DrawScope.drawOnForeground(
         lightSource = shapeConfig.lightSource.name
     )
 
-    val lightMask = NeuShadowCache.get(lightMaskKey) ?: run {
-        val lightShadowDrawable = GradientDrawable().apply {
-            setSize(width, height)
-            setStroke(strokeWidth, android.graphics.Color.WHITE)
-            setBounds(0, 0, width, height)
-            setColor(Color.Transparent.toArgb())
-            setNeuShapeForGeneration(cornerType, ShadowForm.LightShadow, radius, shapeConfig.lightSource)
-        }
+    val lightMask = NeuShadowCache.get(lightMaskKey) ?: if (shapeConfig.allowSynchronousGeneration) run {
+        val lightShadowDrawable = maskDrawable(cornerType, width, height, strokeWidth, ShadowForm.LightShadow, radius, shapeConfig.lightSource)
         generateSingleShadowMaskForGeneration(
             size.width.toInt(),
             size.height.toInt(),
@@ -102,16 +97,10 @@ internal fun DrawScope.drawOnForeground(
             blurMaker,
             lightOffset
         )?.also { NeuShadowCache.put(lightMaskKey, it) }
-    }
+    } else null
 
-    val darkMask = NeuShadowCache.get(darkMaskKey) ?: run {
-        val darkShadowDrawable = GradientDrawable().apply {
-            setSize(width, height)
-            setStroke(strokeWidth, android.graphics.Color.WHITE)
-            setColor(Color.Transparent.toArgb())
-            setBounds(0, 0, width, height)
-            setNeuShapeForGeneration(cornerType, ShadowForm.DarkShadow, radius, shapeConfig.lightSource)
-        }
+    val darkMask = NeuShadowCache.get(darkMaskKey) ?: if (shapeConfig.allowSynchronousGeneration) run {
+        val darkShadowDrawable = maskDrawable(cornerType, width, height, strokeWidth, ShadowForm.DarkShadow, radius, shapeConfig.lightSource)
         generateSingleShadowMaskForGeneration(
             size.width.toInt(),
             size.height.toInt(),
@@ -120,7 +109,7 @@ internal fun DrawScope.drawOnForeground(
             blurMaker,
             0f to 0f
         )?.also { NeuShadowCache.put(darkMaskKey, it) }
-    }
+    } else null
 
     val lightFilter = ColorFilter.tint(shapeConfig.lightShadowColor, BlendMode.SrcIn)
     val darkFilter = ColorFilter.tint(shapeConfig.darkShadowColor, BlendMode.SrcIn)
@@ -132,7 +121,7 @@ internal fun DrawScope.drawOnForeground(
 internal fun generateSingleShadowMaskForGeneration(
     w: Int,
     h: Int,
-    shadowDrawable: GradientDrawable,
+    shadowDrawable: Drawable,
     elevation: Float,
     blurMaker: BlurMaker,
     offset: Pair<Float, Float>
@@ -170,16 +159,11 @@ internal fun ContentDrawScope.drawOnBackground(
         lightSource = shapeConfig.lightSource.name
     )
 
-    val shadowMask = NeuShadowCache.get(maskCacheKey) ?: run {
-        val maskDrawable = GradientDrawable().apply {
-            setColor(Color.White.toArgb())
-            setSize(width, height)
-            setBounds(0, 0, width, height)
-            setNeuShapeForGeneration(cornerType, ShadowForm.Default, radius, shapeConfig.lightSource)
-        }
+    val shadowMask = NeuShadowCache.get(maskCacheKey) ?: if (shapeConfig.allowSynchronousGeneration) run {
+        val maskDrawable = maskDrawable(cornerType, width, height, 0, ShadowForm.Default, radius, shapeConfig.lightSource)
         maskDrawable.toBlurredBitmapForGeneration(width, height, elevation, blurMaker)
             ?.also { NeuShadowCache.put(maskCacheKey, it) }
-    }
+    } else null
 
     val maskBitmap = shadowMask?.asImageBitmap()
     val lightColorFilter = ColorFilter.tint(shapeConfig.lightShadowColor, BlendMode.SrcIn)
@@ -245,6 +229,7 @@ internal fun GradientDrawable.setNeuShapeForGeneration(
     lightSource: LightSource = LightSource.TOP_LEFT
 ) {
     when (cornerType) {
+        is CornerType.Custom -> error("Custom geometry uses a path drawable")
         is CornerType.Oval -> shape = GradientDrawable.OVAL
         is CornerType.Rounded -> {
             shape = GradientDrawable.RECTANGLE

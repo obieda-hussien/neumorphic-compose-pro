@@ -130,7 +130,7 @@ fun Modifier.animatedNeumorphic(
         lightShadowColor = lightShadowColor,
         darkShadowColor = darkShadowColor,
         strokeWidth = strokeWidth,
-        elevation = NeuRenderPolicy.quantizeElevation(animatedElevation),
+        elevation = NeuRenderPolicy.quantizeElevation(if (LocalNeuTokens.current.reduceMotion) (if (pressed) elevation * NeuConstants.PRESSED_ELEVATION_FACTOR else elevation) else animatedElevation),
         lightSource = lightSource
     )
 }
@@ -179,7 +179,7 @@ fun Modifier.springNeumorphic(
         lightShadowColor = lightShadowColor,
         darkShadowColor = darkShadowColor,
         strokeWidth = strokeWidth,
-        elevation = NeuRenderPolicy.quantizeElevation(animatedElevation),
+        elevation = NeuRenderPolicy.quantizeElevation(if (LocalNeuTokens.current.reduceMotion) (if (pressed) elevation * NeuConstants.PRESSED_ELEVATION_FACTOR else elevation) else animatedElevation),
         lightSource = lightSource
     )
 }
@@ -225,7 +225,7 @@ fun Modifier.expressiveNeumorphic(
         lightShadowColor = lightShadowColor,
         darkShadowColor = darkShadowColor,
         strokeWidth = NeuRenderPolicy.quantizeDp(animatedStrokeWidth),
-        elevation = NeuRenderPolicy.quantizeElevation(animatedElevation),
+        elevation = NeuRenderPolicy.quantizeElevation(if (LocalNeuTokens.current.reduceMotion) (if (pressed) elevation * NeuConstants.PRESSED_ELEVATION_FACTOR else elevation) else animatedElevation),
         lightSource = lightSource
     )
 }
@@ -275,16 +275,7 @@ private data class NeumorphicElement(
     }
 }
 
-/**
- * Production [DrawModifierNode] for neumorphic shadows.
- *
- * 1. Layout/style changes mint a monotonic request token.
- * 2. Generation runs on [Dispatchers.Default] with power/thermal awareness.
- * 3. Rapid successive requests (animation) are coalesced via debounce.
- * 4. Completed workers publish only when their token still matches.
- * 5. Draw path is never blocked; cold misses may still generate sync on first paint.
- * 6. GPU backend receives preferSize hints for hot list-item dimensions.
- */
+/** Built-in shadows are generated outside draw; content remains visible on cold misses. */
 internal class NeumorphicNode(
     context: Context,
     private var insets: NeuInsets,
@@ -295,27 +286,16 @@ internal class NeumorphicNode(
     private var elevation: Dp,
     private var lightSource: LightSource
 ) : Modifier.Node(), DrawModifierNode {
-
-    private var appContext: Context = context.applicationContext ?: context
-    private val blurMaker: BlurMaker get() = NeuBlurMakerHolder.get(appContext)
-
-    private val requestToken = AtomicLong(0L)
+    private var appContext = context.applicationContext ?: context
     private var runningJob: Job? = null
-    private var lastRequestKey: String? = null
-    private var lastSize: Size = Size.Zero
-    private var consecutiveRapidChanges: Int = 0
-    private var lastScheduleNs: Long = 0L
+    private var requested: String? = null
+    private var ready: ShapeConfig? = null
+    private var readyShape: NeuShape? = null
+    private var readySize = Size.Zero
 
-    fun update(
-        context: Context,
-        insets: NeuInsets,
-        neuShape: NeuShape,
-        lightShadowColor: Color,
-        darkShadowColor: Color,
-        strokeWidth: Dp,
-        elevation: Dp,
-        lightSource: LightSource
-    ) {
+    fun update(context: Context, insets: NeuInsets, neuShape: NeuShape,
+        lightShadowColor: Color, darkShadowColor: Color, strokeWidth: Dp,
+        elevation: Dp, lightSource: LightSource) {
         appContext = context.applicationContext ?: context
         this.insets = insets
         this.neuShape = neuShape
@@ -324,137 +304,59 @@ internal class NeumorphicNode(
         this.strokeWidth = strokeWidth
         this.elevation = elevation
         this.lightSource = lightSource
-        lastRequestKey = null
         invalidateDraw()
     }
 
     override fun onDetach() {
         runningJob?.cancel()
-        runningJob = null
-        consecutiveRapidChanges = 0
-        super.onDetach()
+        requested = null
+        ready = null
+        readyShape = null
     }
 
     override fun ContentDrawScope.draw() {
-        val shapeConfig = ShapeConfig(
-            neuInsets = insets,
-            elevation = elevation,
-            lightShadowColor = lightShadowColor,
-            darkShadowColor = darkShadowColor,
-            strokeWidth = strokeWidth,
-            lightSource = lightSource
-        )
-
-        val widthPx = size.width.toInt()
-        val heightPx = size.height.toInt()
-        val requestKey = buildString {
-            append(widthPx).append('x').append(heightPx).append('|')
-            append(elevation.value).append('|')
-            append(strokeWidth.value).append('|')
-            append(lightSource.name).append('|')
-            append(neuShape::class.java.name).append('|')
-            append(lightShadowColor.value).append('|')
-            append(darkShadowColor.value)
-        }
-
-        val sizeChanged = lastSize != size
-        lastSize = size
-
-        if (requestKey != lastRequestKey || sizeChanged) {
-            lastRequestKey = requestKey
-            scheduleAsyncGeneration(
-                density = this,
-                widthPx = widthPx,
-                heightPx = heightPx,
-                shapeConfig = shapeConfig,
-                styleShape = neuShape
-            )
-        }
-
-        neuShape.drawShadows(this, blurMaker, shapeConfig)
-    }
-
-    private fun scheduleAsyncGeneration(
-        density: Density,
-        widthPx: Int,
-        heightPx: Int,
-        shapeConfig: ShapeConfig,
-        styleShape: NeuShape
-    ) {
-        if (!isAttached || widthPx <= 0 || heightPx <= 0) return
-
-        // On pre-GPU devices (API < 31) background blur is RenderScript/CPU and
-        // competing with the UI thread hurts frame time. Prefer draw-path generation
-        // and only async-warm when the system is not under pressure.
-        val apiHasGpuBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        val underPressure = NeuThermalPolicy.cacheTier() >= 2 || NeuPowerPolicy.isPowerSave()
-        if (!apiHasGpuBlur && underPressure) return
-
-        val now = System.nanoTime()
-        val elapsedMs = (now - lastScheduleNs) / 1_000_000L
-        lastScheduleNs = now
-
-        if (elapsedMs < RAPID_CHANGE_WINDOW_MS) {
-            consecutiveRapidChanges++
-        } else {
-            consecutiveRapidChanges = 0
-        }
-
-        // During rapid layout/animation changes on CPU backends, wait for settle.
-        val debounceMs = when {
-            !apiHasGpuBlur && consecutiveRapidChanges >= 1 -> DEBOUNCE_CPU_MS
-            underPressure && consecutiveRapidChanges >= 2 -> DEBOUNCE_PRESSURE_MS
-            consecutiveRapidChanges >= 3 -> DEBOUNCE_ANIMATION_MS
-            else -> 0L
-        }
-
-        val token = requestToken.incrementAndGet()
-        runningJob?.cancel()
-
-        val style = shadowStyleFor(styleShape)
-        val maker = blurMaker
-        val densitySnapshot = Density(density.density, density.fontScale)
-        val configSnapshot = shapeConfig.copy()
-
-        if (apiHasGpuBlur) {
-            maker.preferSize(widthPx, heightPx)
-        }
-
-        runningJob = coroutineScope.launch(Dispatchers.Default) {
-            if (debounceMs > 0L) {
-                delay(debounceMs)
-                if (token != requestToken.get() || !isActive) return@launch
-            }
-
-            val produced = try {
-                ShadowGeneration.warmForShape(
-                    density = densitySnapshot,
-                    widthPx = widthPx,
-                    heightPx = heightPx,
-                    shapeConfig = configSnapshot,
-                    blurMaker = maker,
-                    style = style
-                )
-            } catch (_: Throwable) {
-                false
-            }
-
-            // Only invalidate when something new was actually cached — avoids
-            // extra draw frames after a warm hit or a failed generation.
-            if (!produced || token != requestToken.get()) return@launch
-            withContext(Dispatchers.Main.immediate) {
-                if (token == requestToken.get() && isAttached) {
+        if (size.width < 1f || size.height < 1f) { drawContent(); return }
+        val maker = NeuBlurMakerHolder.get(appContext)
+        val config = ShapeConfig(insets, elevation, lightShadowColor, darkShadowColor,
+            strokeWidth, neuShape.resolveCorners(size, this, layoutDirection), lightSource, false)
+        val style = shadowStyleFor(neuShape)
+        val densitySnapshot = Density(density, fontScale)
+        val requestSize = size
+        val shape = neuShape
+        val key = ShadowGeneration.requestKey(densitySnapshot, size.width.toInt(), size.height.toInt(), config, style)
+        if (requested != key || (runningJob?.isActive != true && !ShadowGeneration.isReady(
+                densitySnapshot, size.width.toInt(), size.height.toInt(), config, style))) {
+            requested = key
+            runningJob?.cancel()
+            runningJob = coroutineScope.launch {
+                // Coalesce rapidly changing animation values without doing work in draw().
+                delay(16)
+                val success = me.nikhilchaudhari.library.internal.ShadowWorkQueue.generate(key) {
+                    ShadowGeneration.warmForShape(densitySnapshot, requestSize.width.toInt(),
+                        requestSize.height.toInt(), config, maker, style)
+                    ShadowGeneration.isReady(densitySnapshot, requestSize.width.toInt(),
+                        requestSize.height.toInt(), config, style)
+                }
+                if (isAttached && requested == key && success) {
+                    ready = config
+                    readyShape = shape
+                    readySize = requestSize
                     invalidateDraw()
                 }
             }
         }
-    }
-
-    companion object {
-        private const val RAPID_CHANGE_WINDOW_MS = 48L
-        private const val DEBOUNCE_ANIMATION_MS = 32L
-        private const val DEBOUNCE_PRESSURE_MS = 64L
-        /** Longer settle window on API < 31 where blur is CPU/RenderScript. */
-        private const val DEBOUNCE_CPU_MS = 80L
+        if (ShadowGeneration.isReady(densitySnapshot, size.width.toInt(), size.height.toInt(), config, style)) {
+            ready = config
+            readyShape = shape
+            readySize = size
+        }
+        val previous = ready
+        if (previous != null && readySize == size) {
+            readyShape?.drawShadows(this, maker, previous.copy(
+                lightShadowColor = lightShadowColor, darkShadowColor = darkShadowColor))
+        } else {
+            // Cheap first-frame placeholder: content alone, never a synchronous blur.
+            drawContent()
+        }
     }
 }
