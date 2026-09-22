@@ -1,5 +1,8 @@
 package me.nikhilchaudhari.library
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import android.content.Context
 import android.os.Build
 import androidx.compose.animation.core.Spring
@@ -92,7 +95,17 @@ fun Modifier.neumorphic(
         properties["lightSource"] = lightSource
     }
 ) {
+    require(elevation.value.isFinite() && elevation.value >= 0f)
+    require(strokeWidth.value.isFinite() && strokeWidth.value >= 0f)
     val context = LocalContext.current
+    val outline = when (val corners = neuShape.shadowCorners) {
+        is me.nikhilchaudhari.library.shapes.CornerType.Oval -> CircleShape
+        is me.nikhilchaudhari.library.shapes.CornerType.Rounded -> RoundedCornerShape(corners.radius)
+        else -> RoundedCornerShape(0.dp)
+    }
+    val contrastBorder = if (LocalNeuTokens.current.highContrast) Modifier.border(
+        1.dp, neuContentColor(NeuTheme.colorScheme().backgroundColor),
+        (neuShape as? me.nikhilchaudhari.library.shapes.ComposeNeuShape)?.shape ?: outline) else Modifier
     this.then(
         NeumorphicElement(
             context = context.applicationContext ?: context,
@@ -104,7 +117,7 @@ fun Modifier.neumorphic(
             elevation = elevation,
             lightSource = lightSource
         )
-    )
+    ).then(contrastBorder)
 }
 
 fun Modifier.animatedNeumorphic(
@@ -120,7 +133,7 @@ fun Modifier.animatedNeumorphic(
 ) = composed {
     val animatedElevation by animateDpAsState(
         targetValue = if (pressed) elevation * NeuConstants.PRESSED_ELEVATION_FACTOR else elevation,
-        animationSpec = tween(durationMillis = animationDuration),
+        animationSpec = if (LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else tween(durationMillis = animationDuration),
         label = "elevationAnimation"
     )
 
@@ -154,7 +167,7 @@ fun Modifier.springNeumorphic(
         NeuAnimationType.SPRING, NeuAnimationType.SPRING_BOUNCY -> {
             animateDpAsState(
                 targetValue = targetElevation,
-                animationSpec = spring(
+                animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
                     dampingRatio = dampingRatio,
                     stiffness = stiffness
                 ),
@@ -164,7 +177,7 @@ fun Modifier.springNeumorphic(
         NeuAnimationType.TWEEN -> {
             animateDpAsState(
                 targetValue = targetElevation,
-                animationSpec = tween(durationMillis = NeuConstants.DEFAULT_ANIMATION_DURATION_MS),
+                animationSpec = if (LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else tween(durationMillis = NeuConstants.DEFAULT_ANIMATION_DURATION_MS),
                 label = "tweenElevationAnimation"
             )
         }
@@ -203,7 +216,7 @@ fun Modifier.expressiveNeumorphic(
 
     val animatedElevation by animateDpAsState(
         targetValue = targetElevation,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = NeuConstants.EXPRESSIVE_SPRING_DAMPING,
             stiffness = NeuConstants.EXPRESSIVE_SPRING_STIFFNESS
         ),
@@ -212,7 +225,7 @@ fun Modifier.expressiveNeumorphic(
 
     val animatedStrokeWidth by animateDpAsState(
         targetValue = if (pressed) strokeWidth * 0.8f else strokeWidth,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = NeuConstants.EXPRESSIVE_SPRING_DAMPING,
             stiffness = NeuConstants.EXPRESSIVE_SPRING_STIFFNESS
         ),

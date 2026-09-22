@@ -21,7 +21,7 @@ internal object ShadowGeneration {
         return passes.map { pass -> NeuShadowCache.keyFor(pass, width, height,
             with(density) { config.elevation.toPx() },
             if (pass == "bg-mask") 0f else with(density) { config.strokeWidth.toPx() }.toInt().toFloat(),
-            Color.Transparent, Color.Transparent, config.cornerType.cacheDescriptor(), config.lightSource.name) }
+            Color.Transparent, Color.Transparent, config.cornerType.cacheDescriptor(density.density), config.lightSource.name, config.renderSettings) }
     }
     fun requestKey(density: Density, width: Int, height: Int, config: ShapeConfig, style: ShadowStyle): String =
         keys(density, width, height, config, style).joinToString(";") + "|${density.density}|${config.neuInsets}"
@@ -68,13 +68,13 @@ internal object ShadowGeneration {
             strokeWidthPx = 0f,
             lightColor = Color.Transparent,
             darkColor = Color.Transparent,
-            cornerDescriptor = cornerType.cacheDescriptor(),
-            lightSource = shapeConfig.lightSource.name
+            cornerDescriptor = cornerType.cacheDescriptor(density.density),
+            lightSource = shapeConfig.lightSource.name, settings = shapeConfig.renderSettings
         )
         if (NeuShadowCache.get(key) != null) return false
 
         val maskDrawable = maskDrawable(cornerType, widthPx, heightPx, 0, ShadowForm.Default, radius, shapeConfig.lightSource)
-        val produced = maskDrawable.toBlurredBitmapForGeneration(widthPx, heightPx, elevation, blurMaker)
+        val produced = maskDrawable.toBlurredBitmapForGeneration(widthPx, heightPx, elevation, blurMaker, shapeConfig.renderSettings)
             ?.also { NeuShadowCache.put(key, it) }
         return produced != null
     }
@@ -102,8 +102,8 @@ internal object ShadowGeneration {
             strokeWidthPx = strokeWidth.toFloat(),
             lightColor = Color.Transparent,
             darkColor = Color.Transparent,
-            cornerDescriptor = cornerType.cacheDescriptor(),
-            lightSource = shapeConfig.lightSource.name
+            cornerDescriptor = cornerType.cacheDescriptor(density.density),
+            lightSource = shapeConfig.lightSource.name, settings = shapeConfig.renderSettings
         )
         val darkKey = NeuShadowCache.keyFor(
             pass = "fg-dark-mask",
@@ -113,15 +113,15 @@ internal object ShadowGeneration {
             strokeWidthPx = strokeWidth.toFloat(),
             lightColor = Color.Transparent,
             darkColor = Color.Transparent,
-            cornerDescriptor = cornerType.cacheDescriptor(),
-            lightSource = shapeConfig.lightSource.name
+            cornerDescriptor = cornerType.cacheDescriptor(density.density),
+            lightSource = shapeConfig.lightSource.name, settings = shapeConfig.renderSettings
         )
 
         var produced = false
         if (NeuShadowCache.get(lightKey) == null) {
             val lightShadowDrawable = maskDrawable(cornerType, width, height, strokeWidth, ShadowForm.LightShadow, radius, shapeConfig.lightSource)
             generateSingleShadowMaskForGeneration(
-                widthPx, heightPx, lightShadowDrawable, elevation, blurMaker, lightOffset
+                widthPx, heightPx, lightShadowDrawable, elevation, blurMaker, lightOffset, shapeConfig.renderSettings
             )?.also {
                 NeuShadowCache.put(lightKey, it)
                 produced = true
@@ -131,7 +131,7 @@ internal object ShadowGeneration {
         if (NeuShadowCache.get(darkKey) == null) {
             val darkShadowDrawable = maskDrawable(cornerType, width, height, strokeWidth, ShadowForm.DarkShadow, radius, shapeConfig.lightSource)
             generateSingleShadowMaskForGeneration(
-                widthPx, heightPx, darkShadowDrawable, elevation, blurMaker, 0f to 0f
+                widthPx, heightPx, darkShadowDrawable, elevation, blurMaker, 0f to 0f, shapeConfig.renderSettings
             )?.also {
                 NeuShadowCache.put(darkKey, it)
                 produced = true

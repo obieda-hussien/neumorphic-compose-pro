@@ -75,9 +75,10 @@ internal object NeuRenderPolicy {
         height: Int,
         radius: Int,
         configuredSampling: Int,
-        workBudget: Long = DEFAULT_BLUR_WORK_BUDGET
+        workBudget: Long = DEFAULT_BLUR_WORK_BUDGET,
+        resolveMinimum: Boolean = true
     ): Int {
-        val base = effectiveMinimumSampling(configuredSampling)
+        val base = if (resolveMinimum) effectiveMinimumSampling(configuredSampling) else configuredSampling.coerceAtLeast(1)
         val safeWidth = width.coerceAtLeast(1)
         val safeHeight = height.coerceAtLeast(1)
         val safeRadius = radius.coerceIn(1, BlurConfig.MAX_RADIUS)

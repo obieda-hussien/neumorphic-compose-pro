@@ -43,6 +43,15 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon
 
+      - name: Export JVM API surface
+        run: |
+          mkdir -p build/api
+          python3 scripts/api-surface.py library/build/outputs/aar/library-release.aar > build/api/library.txt
+          python3 scripts/api-surface.py library-views/build/outputs/aar/library-views-release.aar > build/api/library-views.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: jvm-api-surface
+          path: build/api
       - name: Upload Debug APK
         uses: actions/upload-artifact@v7
         with:

@@ -23,10 +23,10 @@ import kotlin.math.roundToInt
  * Human-readable, stable string for a [CornerType], for use in
  * [NeuShadowCache] cache keys.
  */
-internal fun CornerType.cacheDescriptor(): String = when (this) {
+internal fun CornerType.cacheDescriptor(density: Float = 1f): String = when (this) {
     is CornerType.Custom -> identity
     is CornerType.Oval -> "Oval"
-    is CornerType.Rounded -> "Rounded(${radius.value})"
+    is CornerType.Rounded -> "Rounded(${radius.value * density})"
 }
 
 internal fun getLightShadowOffset(lightSource: LightSource, elevation: Float): Pair<Float, Float> {
@@ -72,8 +72,8 @@ internal fun DrawScope.drawOnForeground(
         strokeWidthPx = strokeWidth.toFloat(),
         lightColor = Color.Transparent,
         darkColor = Color.Transparent,
-        cornerDescriptor = cornerType.cacheDescriptor(),
-        lightSource = shapeConfig.lightSource.name
+        cornerDescriptor = cornerType.cacheDescriptor(density),
+        lightSource = shapeConfig.lightSource.name, settings = shapeConfig.renderSettings
     )
     val darkMaskKey = NeuShadowCache.keyFor(
         pass = "fg-dark-mask",
@@ -83,8 +83,8 @@ internal fun DrawScope.drawOnForeground(
         strokeWidthPx = strokeWidth.toFloat(),
         lightColor = Color.Transparent,
         darkColor = Color.Transparent,
-        cornerDescriptor = cornerType.cacheDescriptor(),
-        lightSource = shapeConfig.lightSource.name
+        cornerDescriptor = cornerType.cacheDescriptor(density),
+        lightSource = shapeConfig.lightSource.name, settings = shapeConfig.renderSettings
     )
 
     val lightMask = NeuShadowCache.get(lightMaskKey) ?: if (shapeConfig.allowSynchronousGeneration) run {
@@ -95,7 +95,7 @@ internal fun DrawScope.drawOnForeground(
             lightShadowDrawable,
             elevation,
             blurMaker,
-            lightOffset
+            lightOffset, shapeConfig.renderSettings
         )?.also { NeuShadowCache.put(lightMaskKey, it) }
     } else null
 
@@ -107,7 +107,7 @@ internal fun DrawScope.drawOnForeground(
             darkShadowDrawable,
             elevation,
             blurMaker,
-            0f to 0f
+            0f to 0f, shapeConfig.renderSettings
         )?.also { NeuShadowCache.put(darkMaskKey, it) }
     } else null
 
@@ -124,8 +124,9 @@ internal fun generateSingleShadowMaskForGeneration(
     shadowDrawable: Drawable,
     elevation: Float,
     blurMaker: BlurMaker,
-    offset: Pair<Float, Float>
-) = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).blurred(blurMaker) {
+    offset: Pair<Float, Float>,
+    settings: me.nikhilchaudhari.library.NeuRenderSettings = me.nikhilchaudhari.library.NeuRenderSettings.capture()
+) = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).blurred(blurMaker, settings) {
     withTranslation(x = offset.first, y = offset.second) {
         shadowDrawable.draw(this)
     }
@@ -155,13 +156,13 @@ internal fun ContentDrawScope.drawOnBackground(
         strokeWidthPx = 0f,
         lightColor = Color.Transparent,
         darkColor = Color.Transparent,
-        cornerDescriptor = cornerType.cacheDescriptor(),
-        lightSource = shapeConfig.lightSource.name
+        cornerDescriptor = cornerType.cacheDescriptor(density),
+        lightSource = shapeConfig.lightSource.name, settings = shapeConfig.renderSettings
     )
 
     val shadowMask = NeuShadowCache.get(maskCacheKey) ?: if (shapeConfig.allowSynchronousGeneration) run {
         val maskDrawable = maskDrawable(cornerType, width, height, 0, ShadowForm.Default, radius, shapeConfig.lightSource)
-        maskDrawable.toBlurredBitmapForGeneration(width, height, elevation, blurMaker)
+        maskDrawable.toBlurredBitmapForGeneration(width, height, elevation, blurMaker, shapeConfig.renderSettings)
             ?.also { NeuShadowCache.put(maskCacheKey, it) }
     } else null
 
@@ -197,23 +198,25 @@ internal fun Drawable.toBlurredBitmapForGeneration(
     w: Int,
     h: Int,
     elevation: Float,
-    blurMaker: BlurMaker
+    blurMaker: BlurMaker,
+    settings: me.nikhilchaudhari.library.NeuRenderSettings = me.nikhilchaudhari.library.NeuRenderSettings.capture()
 ): Bitmap? {
     val width = (w + elevation * 2).roundToInt().coerceAtLeast(1)
     val height = (h + elevation * 2).roundToInt().coerceAtLeast(1)
 
     return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        .blurred(blurMaker) {
+        .blurred(blurMaker, settings) {
             withTranslation(elevation, elevation) { draw(this) }
         }
 }
 
 internal fun Bitmap.blurred(
     blurMaker: BlurMaker,
+    settings: me.nikhilchaudhari.library.NeuRenderSettings,
     block: Canvas.() -> Unit
 ): Bitmap? {
     Canvas(this).run(block)
-    return blurMaker.blur(this, sampling = NeuPerformanceConfig.blurDownsampling)
+    return try { blurMaker.blurWithSettings(this, settings) } finally { recycle() }
 }
 
 internal sealed class ShadowForm {

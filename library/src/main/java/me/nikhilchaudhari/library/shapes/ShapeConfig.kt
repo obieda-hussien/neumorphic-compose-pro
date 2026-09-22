@@ -27,5 +27,6 @@ data class ShapeConfig(
     val strokeWidth: Dp,
     var cornerType: CornerType = CornerType.Rounded(),
     val lightSource: LightSource = LightSource.TOP_LEFT,
-    val allowSynchronousGeneration: Boolean = true
+    val allowSynchronousGeneration: Boolean = true,
+    val renderSettings: me.nikhilchaudhari.library.NeuRenderSettings = me.nikhilchaudhari.library.NeuRenderSettings.capture()
 )

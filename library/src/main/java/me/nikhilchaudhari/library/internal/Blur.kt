@@ -94,20 +94,23 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
         sampling: Int = NeuPerformanceConfig.blurDownsampling
     ): Bitmap? {
         if (source.isRecycled || source.width <= 0 || source.height <= 0) return null
-        return blur(source, BlurConfig(source.width, source.height, radius, sampling))
+        return blur(source, BlurConfig(source.width, source.height, radius, sampling), me.nikhilchaudhari.library.NeuRenderSettings.capture().copy(sampling = NeuRenderPolicy.effectiveMinimumSampling(sampling)))
     }
 
-    private fun blur(source: Bitmap, blurConfig: BlurConfig): Bitmap? {
-        val sampling = if (NeuPerformanceConfig.adaptiveBlurEnabled) {
+    internal fun blurWithSettings(source: Bitmap, settings: me.nikhilchaudhari.library.NeuRenderSettings): Bitmap? =
+        blur(source, BlurConfig(source.width, source.height, defaultBlurRadius, settings.sampling), settings)
+
+    private fun blur(source: Bitmap, blurConfig: BlurConfig, settings: me.nikhilchaudhari.library.NeuRenderSettings): Bitmap? {
+        val sampling = if (settings.adaptive) {
             NeuRenderPolicy.effectiveBlurSampling(
                 blurConfig.width,
                 blurConfig.height,
                 blurConfig.radius,
                 blurConfig.sampling,
-                NeuRenderPolicy.effectiveWorkBudget()
+                settings.workBudget, resolveMinimum = false
             )
         } else {
-            NeuRenderPolicy.effectiveMinimumSampling(blurConfig.sampling)
+            settings.sampling
         }
 
         val width = ((blurConfig.width + sampling - 1) / sampling).coerceAtLeast(1)
