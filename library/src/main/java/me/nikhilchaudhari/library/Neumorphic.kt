@@ -302,6 +302,7 @@ internal class NeumorphicNode(
     private var appContext = context.applicationContext ?: context
     private var runningJob: Job? = null
     private var requested: String? = null
+    private var retries = 0
     private var ready: ShapeConfig? = null
     private var readyShape: NeuShape? = null
     private var readySize = Size.Zero
@@ -339,6 +340,7 @@ internal class NeumorphicNode(
         val key = ShadowGeneration.requestKey(densitySnapshot, size.width.toInt(), size.height.toInt(), config, style)
         if (requested != key || (runningJob?.isActive != true && !ShadowGeneration.isReady(
                 densitySnapshot, size.width.toInt(), size.height.toInt(), config, style))) {
+            if (requested != key) retries = 0
             requested = key
             runningJob?.cancel()
             runningJob = coroutineScope.launch {
@@ -352,10 +354,19 @@ internal class NeumorphicNode(
                 }
                 withContext(Dispatchers.Main.immediate) {
                     if (isAttached && requested == key && success) {
+                        retries = 0
                         ready = config
                         readyShape = shape
                         readySize = requestSize
                         invalidateDraw()
+                    } else if (isAttached && requested == key && retries < 3) {
+                        retries++
+                        delay(100L * retries)
+                        if (isAttached && requested == key) {
+                            // Mark the request complete before retrying on a later frame.
+                            runningJob = null
+                            invalidateDraw()
+                        }
                     }
                 }
             }

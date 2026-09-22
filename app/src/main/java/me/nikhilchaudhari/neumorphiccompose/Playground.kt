@@ -209,7 +209,7 @@ private fun StressScreen() {
                 PerfPanel()
             } }
             items(300, key = { "surface-$it" }, contentType = { "surface" }) { index ->
-                NeuDesignTheme(tokens = LocalNeuTokens.current.copy(elevation = if (animated) depth else 6.dp)) {
+                NeuDesignTheme(tokens = LocalNeuTokens.current.copy(elevation = if (animated) ((depth.value * 2).roundToInt() / 2f).dp else 6.dp)) {
                     NeuSurface(Modifier.fillMaxWidth().testTag("stress-card-$index"),
                         shape = RoundedCornerShape((8 + index % 5 * 6).dp), recessed = index % 3 == 0) {
                         Column(Modifier.padding(24.dp)) {
