@@ -111,9 +111,16 @@ private fun Playground() {
                 NeuRotaryKnob(knob, { knob = it }, label = "Volume"); Text("Volume ${(knob * 100).roundToInt()}%", Modifier.weight(1f)) } }
             item("range") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("Range ${(rangeStart * 100).roundToInt()}–${(rangeEnd * 100).roundToInt()}")
                 NeuRangeSlider(rangeStart..rangeEnd, { rangeStart = it.start; rangeEnd = it.endInclusive }, Modifier.fillMaxWidth()) } }
-            item("overlays") { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton({ dialog = true }, Modifier.weight(1f).testTag("open-dialog")) { Text("Dialog") }
-                OutlinedButton({ sheet = true }, Modifier.weight(1f).testTag("open-sheet")) { Text("Sheet") } }
+            item("overlays") {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton({ dialog = true }, Modifier.weight(1f).testTag("open-dialog")) {
+                        Text("Dialog")
+                    }
+                    OutlinedButton({ sheet = true }, Modifier.weight(1f).testTag("open-sheet")) {
+                        Text("Sheet")
+                    }
+                }
+            }
             item("export") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button({ clipboard.setText(AnnotatedString(code)); copied = true }, Modifier.fillMaxWidth().testTag("copy-kotlin")) { Text(if (copied) "Copied Kotlin" else "Copy Kotlin") }
                 TextButton({ codeVisible = !codeVisible }) { Text(if (codeVisible) "Hide code" else "Show code") }
