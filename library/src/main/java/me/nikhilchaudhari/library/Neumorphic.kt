@@ -350,11 +350,13 @@ internal class NeumorphicNode(
                     ShadowGeneration.isReady(densitySnapshot, requestSize.width.toInt(),
                         requestSize.height.toInt(), config, style)
                 }
-                if (isAttached && requested == key && success) {
-                    ready = config
-                    readyShape = shape
-                    readySize = requestSize
-                    invalidateDraw()
+                withContext(Dispatchers.Main.immediate) {
+                    if (isAttached && requested == key && success) {
+                        ready = config
+                        readyShape = shape
+                        readySize = requestSize
+                        invalidateDraw()
+                    }
                 }
             }
         }

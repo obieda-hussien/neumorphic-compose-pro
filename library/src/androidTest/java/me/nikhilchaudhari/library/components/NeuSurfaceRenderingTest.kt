@@ -30,8 +30,12 @@ class NeuSurfaceRenderingTest {
         }
         compose.onNodeWithText("Ready content").assertIsDisplayed()
         compose.waitUntil(10_000) { NeuPerfStats.snapshot().pendingRequests == 0 && NeuPerfStats.snapshot().cacheHits > 0 }
-        val image = compose.onNodeWithTag("surface").captureToImage()
-        assertTrue(image.width > 0 && image.height > 0)
+        compose.onNodeWithTag("surface").assertIsDisplayed()
+        // Compose window capture uses the PixelCopy Window overload introduced in API 26.
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            val image = compose.onNodeWithTag("surface").captureToImage()
+            assertTrue(image.width > 0 && image.height > 0)
+        }
         assertEquals(0, NeuPerfStats.snapshot().pendingRequests)
     }
 }

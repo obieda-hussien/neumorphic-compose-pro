@@ -43,9 +43,11 @@ fun NeuSegmentedButton(options: List<String>, selectedIndex: Int, onSelected: (I
     require(options.isNotEmpty() && selectedIndex in options.indices)
     Row(modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEachIndexed { index, text ->
-            NeuSurface(Modifier.weight(1f).selectable(index == selectedIndex, enabled = enabled,
+            NeuSurface(Modifier.weight(1f).heightIn(min = 48.dp).selectable(index == selectedIndex, enabled = enabled,
                 role = Role.RadioButton, onClick = { onSelected(index) }), recessed = index == selectedIndex) {
-                Text(text, Modifier.padding(12.dp), color = LocalContentColor.current.copy(alpha = if (enabled) 1f else 0.38f))
+                Text(text, Modifier.align(androidx.compose.ui.Alignment.Center).padding(horizontal = 8.dp, vertical = 12.dp),
+                    style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    color = LocalContentColor.current.copy(alpha = if (enabled) 1f else 0.38f))
             }
         }
     }

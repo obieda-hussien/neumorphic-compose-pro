@@ -174,6 +174,20 @@ jobs:
           disable-animations: true
           script: ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace
 
+      - name: Print instrumentation failure traces
+        if: failure()
+        run: |
+          python3 - <<'PYTEST'
+          import pathlib, xml.etree.ElementTree as ET
+          for path in pathlib.Path('.').glob('**/build/outputs/androidTest-results/**/*.xml'):
+              try:
+                  root = ET.parse(path).getroot()
+              except ET.ParseError:
+                  continue
+              for case in root.iter('testcase'):
+                  for failure in list(case.findall('failure')) + list(case.findall('error')):
+                      print(case.attrib, failure.text)
+          PYTEST
       - name: Upload Instrumented Test Results
         uses: actions/upload-artifact@v7
         if: always()
