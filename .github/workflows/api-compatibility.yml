@@ -1,0 +1,39 @@
+name: Compare published JVM API
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: Baseline branch, tag or commit (same major version)
+        required: true
+      candidate_ref:
+        description: Candidate branch, tag or commit
+        default: release/5.0.0
+        required: true
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.baseline_ref }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build baseline AARs
+        run: |
+          bash gradlew :library:assembleRelease :library-views:assembleRelease --no-daemon
+          mkdir -p "$RUNNER_TEMP/neu-api-baseline"
+          cp library/build/outputs/aar/library-release.aar "$RUNNER_TEMP/neu-api-baseline/library.aar"
+          cp library-views/build/outputs/aar/library-views-release.aar "$RUNNER_TEMP/neu-api-baseline/library-views.aar"
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.candidate_ref }}
+      - name: Build candidate and reject removed signatures
+        run: |
+          bash gradlew :library:assembleRelease :library-views:assembleRelease --no-daemon
+          python3 scripts/api-surface.py library/build/outputs/aar/library-release.aar "$RUNNER_TEMP/neu-api-baseline/library.aar"
+          python3 scripts/api-surface.py library-views/build/outputs/aar/library-views-release.aar "$RUNNER_TEMP/neu-api-baseline/library-views.aar"

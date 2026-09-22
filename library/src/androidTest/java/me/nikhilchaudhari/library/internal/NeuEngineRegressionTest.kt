@@ -71,6 +71,7 @@ class NeuEngineRegressionTest {
                     if (result !== source) result.recycle()
                     source.recycle()
                 }
+                assertTrue("API 31+ test must exercise RenderEffect, not only its fallback", (engine.stats()["gpu"] ?: 0L) > 0L)
             } finally { engine.release() }
         }
     }

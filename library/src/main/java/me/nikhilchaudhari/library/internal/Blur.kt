@@ -26,7 +26,7 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
     private val stateLock = Any()
     private val contextRef = WeakReference(context.applicationContext ?: context)
     private var released = false
-    private var blurEngine: BlurEngine? = null
+    @Volatile private var blurEngine: BlurEngine? = null
     private val workingBitmapPool = mutableMapOf<Long, Bitmap>()
 
     private fun createBlurEngine(): BlurEngine =
@@ -63,6 +63,14 @@ class BlurMaker(context: Context, private val defaultBlurRadius: Int) {
             }
             workingBitmapPool[sizeKey(bitmap.width, bitmap.height)] = bitmap
         }
+    }
+
+    internal fun diagnostics(): Triple<String, Long, Long> {
+        val engine = blurEngine
+        return if (Build.VERSION.SDK_INT >= 31 && engine is RenderEffectBlurEngine) {
+            val stats = engine.stats()
+            Triple(engine.backendName(), stats["fallback"] ?: 0L, stats["estimatedBytes"] ?: 0L)
+        } else Triple(if (engine == null) "Not initialized" else "RenderScript / StackBlur", 0L, 0L)
     }
 
     fun warmUp() {
@@ -209,6 +217,8 @@ object NeuBlurMakerHolder {
             ).also { instance = it }
         }
     }
+
+    internal fun diagnostics() = instance?.diagnostics() ?: Triple("Not initialized", 0L, 0L)
 
     fun onAppBackgrounded() {
         instance?.onAppBackgrounded()

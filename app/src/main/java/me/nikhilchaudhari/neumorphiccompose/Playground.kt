@@ -113,7 +113,7 @@ private fun PerfPanel() {
     Text("Cache ${stats.cacheHits} hits / ${stats.cacheMisses} misses\n" +
         "${stats.cacheBytes / 1024} / ${stats.cacheBudgetBytes / 1024} KiB · Pending ${stats.pendingRequests}\n" +
         "Generation avg %.2f ms · Failed %d\n".format(stats.averageGenerationMs, stats.failedRequests) +
-        "Preferred: ${stats.preferredBackend}\nThermal ${stats.thermalTier} · Saver ${stats.powerSave}\n" +
+        "Last backend: ${stats.lastBackend} · GPU fallbacks ${stats.gpuFallbacks} · GPU est. ${stats.estimatedGpuBytes / 1024} KiB\nThermal ${stats.thermalTier} · Saver ${stats.powerSave}\n" +
         "Frame total P95 %.2f ms · P99 %.2f ms (%d samples)".format(frames.first, frames.second, frames.third))
 }
 

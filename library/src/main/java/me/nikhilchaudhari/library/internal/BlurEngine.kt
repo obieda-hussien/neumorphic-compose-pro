@@ -72,6 +72,9 @@ internal class RenderEffectBlurEngine(
 
     private val preferredSizes = ConcurrentHashMap<Pair<Int, Int>, Long>()
 
+    @Volatile private var allocatedBytes = 0L
+    @Volatile private var sessionCount = 0
+    @Volatile private var lastBackend = "Not used"
     private val totalBlurs = AtomicLong(0)
     private val gpuBlurs = AtomicLong(0)
     private val fallbackBlurs = AtomicLong(0)
@@ -110,14 +113,17 @@ internal class RenderEffectBlurEngine(
                 val result = blurWithRenderEffectLocked(bitmap, safeRadius)
                 if (result != null) {
                     gpuBlurs.incrementAndGet()
+                    lastBackend = "RenderEffect"
                     result
                 } else {
                     fallbackBlurs.incrementAndGet()
+                    lastBackend = "StackBlur"
                     StackBlurEngine().blur(bitmap, radius.coerceIn(1, BlurConfig.MAX_RADIUS))
                 }
             } catch (_: Throwable) {
                 destroySessionsLocked()
                 fallbackBlurs.incrementAndGet()
+                    lastBackend = "StackBlur"
                 StackBlurEngine().blur(bitmap, radius.coerceIn(1, BlurConfig.MAX_RADIUS))
             }
         }
@@ -135,6 +141,7 @@ internal class RenderEffectBlurEngine(
         // Never reference Bitmap.Config.HARDWARE here — minSdk is 24 and lint flags it.
         var current: Bitmap = bitmap
         var ownedIntermediate: Bitmap? = null
+        var succeeded = false
 
         try {
             for (passRadius in passes) {
@@ -148,8 +155,10 @@ internal class RenderEffectBlurEngine(
                 ownedIntermediate = if (blurred !== bitmap) blurred else null
                 current = blurred
             }
+            succeeded = true
             return current
         } finally {
+            if (!succeeded) ownedIntermediate?.takeUnless { it === bitmap || it.isRecycled }?.recycle()
             // Do not recycle the original input.
         }
     }
@@ -218,7 +227,10 @@ internal class RenderEffectBlurEngine(
         sessionsBySize[exactKey]?.let { return it }
 
         // Exact dimensions only: pooled larger render targets change bitmap geometry.
-        if (sessionsBySize.size >= MAX_SESSIONS) {
+        val estimatedBytes = width.toLong() * height * 4L * 3L
+        require(estimatedBytes <= MAX_SESSION_BYTES) { "GPU target exceeds session budget" }
+        while (sessionsBySize.isNotEmpty() &&
+            (sessionsBySize.size >= MAX_SESSIONS || allocatedBytes + estimatedBytes > MAX_SESSION_BYTES)) {
             evictOneLocked()
         }
 
@@ -238,6 +250,8 @@ internal class RenderEffectBlurEngine(
         }
         val session = Session(imageReader, renderNode, hardwareRenderer, width, height)
         sessionsBySize[width to height] = session
+        allocatedBytes += width.toLong() * height * 4L * 3L
+        sessionCount = sessionsBySize.size
         return session
     }
 
@@ -257,7 +271,11 @@ internal class RenderEffectBlurEngine(
         }
 
         victimKey?.let { key ->
-            sessionsBySize.remove(key)?.let { destroySession(it) }
+            sessionsBySize.remove(key)?.let {
+                allocatedBytes -= it.width.toLong() * it.height * 4L * 3L
+                destroySession(it)
+                sessionCount = sessionsBySize.size
+            }
         }
     }
 
@@ -279,6 +297,8 @@ internal class RenderEffectBlurEngine(
     private fun destroySessionsLocked() {
         sessionsBySize.values.forEach { destroySession(it) }
         sessionsBySize.clear()
+        allocatedBytes = 0L
+        sessionCount = 0
     }
 
     override fun release() {
@@ -288,16 +308,19 @@ internal class RenderEffectBlurEngine(
         }
     }
 
+    fun backendName(): String = lastBackend
     fun stats(): Map<String, Long> = mapOf(
         "total" to totalBlurs.get(),
         "gpu" to gpuBlurs.get(),
         "fallback" to fallbackBlurs.get(),
         "multiPass" to multiPassBlurs.get(),
-        "sessions" to sessionsBySize.size.toLong()
+        "sessions" to sessionCount.toLong(),
+        "estimatedBytes" to allocatedBytes
     )
 
     companion object {
         private const val MAX_SESSIONS = 6
+        private const val MAX_SESSION_BYTES = 16L * 1024 * 1024
         private const val MAX_SINGLE_PASS_RADIUS = 25
         private const val MAX_EFFECTIVE_RADIUS = 64
         private const val MAX_PASSES = 4

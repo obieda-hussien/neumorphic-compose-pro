@@ -18,7 +18,7 @@ def surface(aar):
             jar.write_bytes(archive.read('classes.jar'))
         with zipfile.ZipFile(jar) as archive:
             classes = [n[:-6].replace('/', '.') for n in archive.namelist()
-                       if n.endswith('.class') and not n.startswith(('META-INF/', 'kotlin/'))]
+                       if n.endswith('.class') and '/internal/' not in n and not n.startswith(('META-INF/', 'kotlin/'))]
         for name in classes:
             lines = subprocess.check_output(['javap', '-protected', '-s', '-classpath', str(jar), name], text=True).splitlines()
             declaration = next((line for line in lines if line.endswith('{')), '')
