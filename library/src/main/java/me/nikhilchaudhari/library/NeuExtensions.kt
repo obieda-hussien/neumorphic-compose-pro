@@ -116,7 +116,7 @@ fun Modifier.expressiveNeumorphicClickable(
             isHovered && enableScaleAnimation -> 1.02f
             else -> 1f
         },
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),

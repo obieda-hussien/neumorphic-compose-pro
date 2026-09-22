@@ -86,5 +86,6 @@ androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro
 # several infrastructure libraries out of the test APK's runtime graph; because
 # this module is minified, R8 must see the concrete implementations explicitly.
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 google-guava = { module = "com.google.guava:guava", version.ref = "guava" }
 errorprone-annotations = { module = "com.google.errorprone:error_prone_annotations", version.ref = "errorProneAnnotations" }

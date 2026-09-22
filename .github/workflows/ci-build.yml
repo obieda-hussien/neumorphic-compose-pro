@@ -43,6 +43,15 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon
 
+      - name: Export JVM API surface
+        run: |
+          mkdir -p build/api
+          python3 scripts/api-surface.py library/build/outputs/aar/library-release.aar > build/api/library.txt
+          python3 scripts/api-surface.py library-views/build/outputs/aar/library-views-release.aar > build/api/library-views.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: jvm-api-surface
+          path: build/api
       - name: Upload Debug APK
         uses: actions/upload-artifact@v7
         with:
@@ -122,7 +131,11 @@ jobs:
           retention-days: 14
 
   instrumentation:
-    name: Instrumented & Compose UI Tests
+    name: Instrumented & Compose UI Tests (API ${{ matrix.api }})
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [24, 29, 34]
     runs-on: ubuntu-22.04
     timeout-minutes: 45
 
@@ -152,7 +165,7 @@ jobs:
       - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: ${{ matrix.api }}
           target: default
           arch: x86_64
           force-avd-creation: true
@@ -161,11 +174,25 @@ jobs:
           disable-animations: true
           script: ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace
 
+      - name: Print instrumentation failure traces
+        if: failure()
+        run: |
+          python3 - <<'PYTEST'
+          import pathlib, xml.etree.ElementTree as ET
+          for path in pathlib.Path('.').glob('**/build/outputs/androidTest-results/**/*.xml'):
+              try:
+                  root = ET.parse(path).getroot()
+              except ET.ParseError:
+                  continue
+              for case in root.iter('testcase'):
+                  for failure in list(case.findall('failure')) + list(case.findall('error')):
+                      print(case.attrib, failure.text)
+          PYTEST
       - name: Upload Instrumented Test Results
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: instrumented-test-results
+          name: instrumented-test-results-${{ matrix.api }}
           path: |
             **/build/outputs/androidTest-results/
             **/build/reports/androidTests/
@@ -173,7 +200,11 @@ jobs:
           if-no-files-found: ignore
 
   benchmark:
-    name: Macrobenchmark Smoke Tests
+    name: Macrobenchmark Smoke Tests (API ${{ matrix.api }})
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 34]
     runs-on: ubuntu-22.04
     timeout-minutes: 45
 
@@ -203,7 +234,7 @@ jobs:
       - name: Run Macrobenchmarks
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: ${{ matrix.api }}
           target: default
           arch: x86_64
           force-avd-creation: true
@@ -216,7 +247,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: macrobenchmark-results
+          name: macrobenchmark-results-${{ matrix.api }}
           path: |
             macrobenchmark/build/outputs/
             macrobenchmark/build/reports/

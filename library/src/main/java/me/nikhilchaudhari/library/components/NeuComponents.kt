@@ -50,6 +50,9 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -99,7 +102,7 @@ fun NeuButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     shape: Shape = RoundedCornerShape(16.dp),
     neuShape: NeuShape = Punched.Rounded(16.dp),
     elevation: Dp = 8.dp,
@@ -116,7 +119,7 @@ fun NeuButton(
             isHovered -> 1.02f
             else -> 1f
         },
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -129,7 +132,7 @@ fun NeuButton(
             isHovered -> elevation * 1.2f
             else -> elevation
         },
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioLowBouncy,
             stiffness = Spring.StiffnessLow
         ),
@@ -177,7 +180,7 @@ fun NeuButton(
 @Composable
 fun NeuCard(
     modifier: Modifier = Modifier,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     shape: Shape = RoundedCornerShape(20.dp),
     neuShape: NeuShape = Punched.Rounded(20.dp),
     elevation: Dp = 10.dp,
@@ -216,21 +219,26 @@ fun NeuTextField(
     placeholder: String = "",
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     shape: Shape = RoundedCornerShape(12.dp),
     textStyle: TextStyle = LocalTextStyle.current,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = true,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
-    visualTransformation: VisualTransformation = VisualTransformation.None
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    isError: Boolean = false,
+    supportingText: String? = null,
+    maxLength: Int? = null,
+    label: String? = null
 ) {
+    require(maxLength == null || maxLength >= 0)
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
     val animatedElevation by animateDpAsState(
         targetValue = if (isFocused) 8.dp else 4.dp,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -238,21 +246,23 @@ fun NeuTextField(
     )
 
     val borderColor by animateColorAsState(
-        targetValue = if (isFocused) {
+        targetValue = if (isError) MaterialTheme.colorScheme.error else if (isFocused) {
             colorScheme.accentColor.takeIf { it != Color.Unspecified }
                 ?: MaterialTheme.colorScheme.primary
         } else {
             Color.Transparent
         },
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(stiffness = Spring.StiffnessMedium),
         label = "textFieldBorder"
     )
 
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    label?.let { Text(it, color = if (isError) MaterialTheme.colorScheme.error else LocalContentColor.current) }
     Box(
-        modifier = modifier
+        modifier = Modifier
             .clip(shape)
             .neumorphic(
-                neuShape = Pressed.Rounded(12.dp),
+                neuShape = remember(shape) { me.nikhilchaudhari.library.shapes.ComposeNeuShape(shape, recessed = true) },
                 lightShadowColor = colorScheme.lightShadowColor,
                 darkShadowColor = colorScheme.darkShadowColor,
                 elevation = animatedElevation,
@@ -260,7 +270,7 @@ fun NeuTextField(
             )
             .background(colorScheme.backgroundColor, shape)
             .border(
-                width = if (isFocused) 2.dp else 0.dp,
+                width = if (isFocused || isError) 2.dp else 0.dp,
                 color = borderColor,
                 shape = shape
             )
@@ -284,8 +294,11 @@ fun NeuTextField(
 
                 BasicTextField(
                     value = value,
-                    onValueChange = onValueChange,
-                    modifier = Modifier.fillMaxWidth(),
+                    onValueChange = { next -> if (maxLength == null || next.length <= maxLength) onValueChange(next) },
+                    modifier = Modifier.fillMaxWidth().semantics {
+                        if (isError) error(supportingText ?: "Invalid input")
+                        label?.let { contentDescription = it }
+                    },
                     enabled = enabled,
                     readOnly = readOnly,
                     textStyle = textStyle.copy(
@@ -308,6 +321,13 @@ fun NeuTextField(
             trailingIcon?.invoke()
         }
     }
+    if (supportingText != null || maxLength != null) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(supportingText.orEmpty(), Modifier.weight(1f), color = if (isError) MaterialTheme.colorScheme.error else LocalContentColor.current)
+            maxLength?.let { Text("${value.length}/$it") }
+        }
+    }
+    }
 }
 
 /** Material 3 Expressive Neumorphic Switch. */
@@ -317,7 +337,7 @@ fun NeuSwitch(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     checkedThumbColor: Color = colorScheme.accentColor.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.primary,
     uncheckedThumbColor: Color = colorScheme.darkShadowColor
@@ -326,7 +346,7 @@ fun NeuSwitch(
 
     val thumbOffset by animateDpAsState(
         targetValue = if (checked) 24.dp else 0.dp,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -335,13 +355,13 @@ fun NeuSwitch(
 
     val thumbColor by animateColorAsState(
         targetValue = if (checked) checkedThumbColor else uncheckedThumbColor,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(stiffness = Spring.StiffnessMedium),
         label = "switchThumbColor"
     )
 
     val trackColor by animateColorAsState(
         targetValue = if (checked) checkedThumbColor.copy(alpha = 0.3f) else colorScheme.backgroundColor,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(stiffness = Spring.StiffnessMedium),
         label = "switchTrackColor"
     )
 
@@ -390,7 +410,7 @@ fun NeuSlider(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     trackHeight: Dp = 8.dp,
     thumbSize: Dp = 24.dp
 ) {
@@ -402,7 +422,7 @@ fun NeuSlider(
 
     val animatedThumbScale by animateFloatAsState(
         targetValue = if (isPressed) 1.2f else 1f,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -501,7 +521,7 @@ fun NeuIconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     selected: Boolean = false,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     size: Dp = 48.dp,
     content: @Composable () -> Unit
 ) {
@@ -515,7 +535,7 @@ fun NeuIconButton(
             isHovered -> 1.05f
             else -> 1f
         },
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -524,7 +544,7 @@ fun NeuIconButton(
 
     val selectedAlpha by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(stiffness = Spring.StiffnessMedium),
         label = "iconButtonSelectedAlpha"
     )
 
@@ -609,7 +629,7 @@ fun NeuChip(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     leadingIcon: @Composable (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
@@ -618,13 +638,13 @@ fun NeuChip(
 
     val selectedAlpha by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(stiffness = Spring.StiffnessMedium),
         label = "chipSelectedAlpha"
     )
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -707,14 +727,14 @@ fun NeuChip(
 fun NeuProgressBar(
     progress: Float,
     modifier: Modifier = Modifier,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     trackHeight: Dp = 12.dp,
     animated: Boolean = true
 ) {
     val targetProgress = progress.coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
         targetValue = targetProgress,
-        animationSpec = if (animated) {
+        animationSpec = if (animated && !me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) {
             spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
                 stiffness = Spring.StiffnessLow
@@ -761,7 +781,7 @@ fun NeuProgressBar(
 fun NeuCircularProgress(
     progress: Float?,
     modifier: Modifier = Modifier,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     size: Dp = 64.dp,
     strokeWidth: Dp = 6.dp
 ) {
@@ -770,14 +790,14 @@ fun NeuCircularProgress(
     val determinateTarget = progress?.coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
         targetValue = determinateTarget ?: 0f,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
         ),
         label = "circularProgressAnimation"
     )
 
-    val indeterminateRotation = if (progress == null) {
+    val indeterminateRotation = if (progress == null && !me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) {
         val transition = rememberInfiniteTransition(label = "circularProgressIndeterminate")
         transition.animateFloat(
             initialValue = 0f,
@@ -868,7 +888,7 @@ fun NeuRadioButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     size: Dp = 24.dp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -879,7 +899,7 @@ fun NeuRadioButton(
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -888,7 +908,7 @@ fun NeuRadioButton(
 
     val innerSize by animateDpAsState(
         targetValue = if (selected) size * 0.5f else 0.dp,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -897,7 +917,7 @@ fun NeuRadioButton(
 
     val backgroundColor by animateColorAsState(
         targetValue = if (selected) accentColor.copy(alpha = 0.15f) else colorScheme.backgroundColor,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(stiffness = Spring.StiffnessMedium),
         label = "radioBackground"
     )
 
@@ -940,7 +960,7 @@ fun NeuCheckbox(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     size: Dp = 24.dp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -951,7 +971,7 @@ fun NeuCheckbox(
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -960,13 +980,13 @@ fun NeuCheckbox(
 
     val backgroundColor by animateColorAsState(
         targetValue = if (checked) accentColor else colorScheme.backgroundColor,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(stiffness = Spring.StiffnessMedium),
         label = "checkboxBackground"
     )
 
     val borderColor by animateColorAsState(
         targetValue = if (checked) accentColor else colorScheme.darkShadowColor,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(stiffness = Spring.StiffnessMedium),
         label = "checkboxBorder"
     )
 
@@ -1014,7 +1034,7 @@ fun NeuCheckbox(
 fun NeuFloatingActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     size: Dp = 56.dp,
     content: @Composable () -> Unit
 ) {
@@ -1031,7 +1051,7 @@ fun NeuFloatingActionButton(
             isHovered -> 1.05f
             else -> 1f
         },
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -1044,7 +1064,7 @@ fun NeuFloatingActionButton(
             isHovered -> 12.dp
             else -> 8.dp
         },
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
@@ -1084,7 +1104,7 @@ fun NeuSeekBar(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.LightColorScheme,
+    colorScheme: NeuTheme.NeuColorScheme = NeuTheme.colorScheme(),
     trackHeight: Dp = 10.dp,
     thumbSize: Dp = 28.dp
 ) {
@@ -1101,7 +1121,7 @@ fun NeuSeekBar(
     // at drag start, which was especially expensive after returning from background.
     val animatedThumbScale by animateFloatAsState(
         targetValue = if (isDragging > 0f) 1.15f else 1f,
-        animationSpec = spring(
+        animationSpec = if (me.nikhilchaudhari.library.LocalNeuTokens.current.reduceMotion) androidx.compose.animation.core.snap() else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),

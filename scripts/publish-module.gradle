@@ -1,4 +1,10 @@
 apply plugin: 'maven-publish'
+apply plugin: 'org.jetbrains.dokka'
+tasks.register('androidJavadocJar', Jar) {
+    archiveClassifier.set('javadoc')
+    from tasks.named('dokkaGeneratePublicationHtml').flatMap { it.outputDirectory }
+}
+
 
 
 tasks.register('androidSourcesJar', Jar) {
@@ -45,6 +51,7 @@ afterEvaluate {
 
 
                 artifact tasks.named('androidSourcesJar')
+                artifact tasks.named('androidJavadocJar')
 
 
                 pom {
@@ -99,49 +106,21 @@ afterEvaluate {
 }
 
 
-/*
- * GPG signing is OPTIONAL.
- *
- * JitPack must work without any signing configuration.
- */
-
-def signingKeyId =
-        rootProject.ext.has('signingKeyId')
-                ? rootProject.ext.signingKeyId.toString().trim()
-                : ''
-
-def signingPassword =
-        rootProject.ext.has('signingPassword')
-                ? rootProject.ext.signingPassword.toString().trim()
-                : ''
-
-def signingSecretKeyRingFile =
-        rootProject.ext.has('signingSecretKeyRingFile')
-                ? rootProject.ext.signingSecretKeyRingFile.toString().trim()
-                : ''
-
-
-boolean hasValidSigningConfiguration =
-        !signingKeyId.isEmpty() &&
-        !signingPassword.isEmpty() &&
-        !signingSecretKeyRingFile.isEmpty() &&
-        project.file(signingSecretKeyRingFile).exists()
-
-
-if (hasValidSigningConfiguration) {
-
-    apply plugin: 'signing'
-
+// Central signing uses an in-memory key; JitPack builds need no credentials.
+apply plugin: 'signing'
+def centralSigningKey = providers.environmentVariable('SIGNING_KEY').orNull
+def centralSigningPassword = providers.environmentVariable('SIGNING_PASSWORD').orNull
+if (centralSigningKey) {
     signing {
-
-        def signingProperties = [
-                keyId: signingKeyId,
-                password: signingPassword,
-                secretKeyRingFile: signingSecretKeyRingFile
-        ]
-
-        signatory = signingProperties
-
+        useInMemoryPgpKeys(centralSigningKey, centralSigningPassword)
         sign publishing.publications
+    }
+}
+publishing {
+    repositories {
+        maven {
+            name = 'CentralStaging'
+            url = rootProject.layout.buildDirectory.dir('central-staging')
+        }
     }
 }

@@ -6,11 +6,9 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose' version '2.3.0' apply false
     id 'androidx.baselineprofile' version '1.4.1' apply false
 
-    id 'io.github.gradle-nexus.publish-plugin' version '2.0.0'
+    id 'org.jetbrains.dokka' version '2.2.0' apply false
 }
 
 tasks.register('clean', Delete) {
     delete rootProject.layout.buildDirectory
 }
-
-apply from: "${rootDir}/scripts/publish-root.gradle"

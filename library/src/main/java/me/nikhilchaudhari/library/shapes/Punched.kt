@@ -12,6 +12,8 @@ import me.nikhilchaudhari.library.internal.BlurMaker
  * __/         \__
  */
 open class Punched(private val cornerType: CornerType = CornerType.Rounded()) : NeuShape {
+    override val shadowCorners: CornerType get() = cornerType
+
 
     override fun drawShadows(
         drawScope: ContentDrawScope,

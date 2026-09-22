@@ -3,16 +3,19 @@ package me.nikhilchaudhari.library.internal
 import android.content.Context
 import android.os.Build
 import android.os.PowerManager
+import android.os.SystemClock
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.roundToLong
+import me.nikhilchaudhari.library.NeuPerformanceConfig
 
 /**
- * Tiny process-wide thermal signal used to trade visual quality for sustained
+ * Process-wide thermal signal used to trade visual quality for sustained
  * frame rate when Android reports thermal pressure.
  *
- * This is deliberately a coarse policy. It never changes layout or interaction
- * behavior, only the maximum blur work allowed for newly generated shadows.
+ * Tier changes apply hysteresis so quality does not thrash every few frames
+ * when the device sits near a thermal boundary.
  */
 internal object NeuThermalPolicy {
     private const val TIER_NORMAL = 0
@@ -22,7 +25,9 @@ internal object NeuThermalPolicy {
     private const val TIER_CRITICAL = 4
 
     private val registered = AtomicBoolean(false)
-    private val tier = AtomicInteger(TIER_NORMAL)
+    private val reportedTier = AtomicInteger(TIER_NORMAL)
+    private val appliedTier = AtomicInteger(TIER_NORMAL)
+    private val lastChangeElapsedMs = AtomicLong(0L)
 
     fun register(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
@@ -30,18 +35,26 @@ internal object NeuThermalPolicy {
 
         val appContext = context.applicationContext ?: context
         val powerManager = appContext.getSystemService(PowerManager::class.java) ?: return
-        tier.set(tierFor(powerManager.currentThermalStatus))
+        val initial = tierFor(powerManager.currentThermalStatus)
+        reportedTier.set(initial)
+        appliedTier.set(initial)
+        lastChangeElapsedMs.set(SystemClock.elapsedRealtime())
 
         powerManager.addThermalStatusListener(appContext.mainExecutor) { status ->
-            tier.set(tierFor(status))
+            reportedTier.set(tierFor(status))
+            maybeApplyReportedTier()
         }
     }
 
-    fun cacheTier(): Int = tier.get()
+    fun cacheTier(): Int {
+        maybeApplyReportedTier()
+        return appliedTier.get()
+    }
 
     fun effectiveWorkBudget(baseBudget: Long): Long {
+        maybeApplyReportedTier()
         val safe = baseBudget.coerceAtLeast(1L)
-        val multiplier = when (tier.get()) {
+        val multiplier = when (appliedTier.get()) {
             TIER_LIGHT -> 0.85
             TIER_MODERATE -> 0.70
             TIER_SEVERE -> 0.50
@@ -49,6 +62,22 @@ internal object NeuThermalPolicy {
             else -> 1.0
         }
         return (safe.toDouble() * multiplier).roundToLong().coerceAtLeast(1L)
+    }
+
+    private fun maybeApplyReportedTier() {
+        val reported = reportedTier.get()
+        val applied = appliedTier.get()
+        if (reported == applied) return
+
+        val now = SystemClock.elapsedRealtime()
+        val elapsed = now - lastChangeElapsedMs.get()
+        val hysteresis = NeuPerformanceConfig.qualityHysteresisMs.coerceAtLeast(0L)
+
+        // Escalate immediately (protect the device). De-escalate only after hysteresis.
+        val shouldApply = reported > applied || elapsed >= hysteresis
+        if (shouldApply && appliedTier.compareAndSet(applied, reported)) {
+            lastChangeElapsedMs.set(now)
+        }
     }
 
     private fun tierFor(status: Int): Int {

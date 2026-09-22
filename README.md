@@ -1,5 +1,9 @@
 # Neumorphism UI for Android
 
+> **5.0.0 development branch:** see [CHANGELOG](CHANGELOG.md), [engine](docs/5.0.0-performance-engine.md), [feature status](docs/ROADMAP-5.x-features.md) and [publishing](docs/PUBLISHING.md). Installation examples below refer to the existing 4.0.1 release until 5.0.0 is published.
+
+The demo now includes **Gallery**, **Playground** and a **300-row Stress** screen. Playground exports Kotlin and supports depth, corners, lighting, dark/purple presets and surface contrast. `NeuDesignTheme` configures `NeuSurface` and the new controls. See the demo for complete usage.
+
 A modern neumorphic UI library for Android with support for **Jetpack Compose** and traditional **XML/Java Views**.
 
 This fork focuses on three things: **neumorphic visuals, predictable interaction, and efficient shadow rendering**. Version `4.0.1` hardens the renderer, cache, View invalidation, Compose semantics, concurrency, and performance test coverage while keeping the public component API stable.

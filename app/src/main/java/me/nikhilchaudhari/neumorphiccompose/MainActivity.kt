@@ -87,9 +87,14 @@ import me.nikhilchaudhari.neumorphiccompose.ui.theme.NeumorphismComposeTheme
 
 
 class MainActivity : ComponentActivity() {
+    override fun onDestroy() {
+        window.removeOnFrameMetricsAvailableListener(DemoFrameStats)
+        super.onDestroy()
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        window.addOnFrameMetricsAvailableListener(DemoFrameStats, android.os.Handler(mainLooper))
         
         setContent {
             NeumorphismComposeTheme {
@@ -97,7 +102,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    MainContent()
+                    DemoExperience(intent.getStringExtra("screen"))
                 }
             }
         }
